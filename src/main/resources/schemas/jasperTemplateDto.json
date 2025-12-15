@@ -1,0 +1,58 @@
+{
+  "type": "object",
+  "$schema": "http://json-schema.org/draft-04/schema",
+  "title": "JasperTemplateDto",
+  "description": "A single jasper template",
+  "properties": {
+    "id": {
+      "type": "string",
+      "title": "id"
+    },
+    "name": {
+      "type": "string",
+      "title": "name"
+    },
+    "data": {
+      "type": ["array", "null"],
+      "title": "data",
+      "items": {
+        "type": "integer"
+      },
+      "uniqueItems": false
+    },
+    "templateParameters": {
+      "type": ["array", "null"],
+      "title": "templateParameters",
+      "items": {
+        "type": "object",
+        "$ref": "jasperTemplateParameterDto.json"
+      },
+      "uniqueItems": false
+    },
+    "requiredRights": {
+      "type": ["array", "null"],
+      "title": "requiredRights",
+      "items": {
+        "type": "string"
+      },
+      "uniqueItems": false
+    },
+    "type": {
+      "type": ["string", "null"],
+      "title": "type"
+    },
+    "description": {
+      "type": ["string", "null"],
+      "title": "description"
+    },
+    "category": {
+      "type": "object",
+      "$ref": "reportCategoryDto.json"
+    }
+  },
+  "required": [
+    "id",
+    "name",
+    "category"
+  ]
+}

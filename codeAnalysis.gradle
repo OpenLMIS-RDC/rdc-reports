@@ -1,0 +1,42 @@
+apply plugin: 'checkstyle'
+apply plugin: 'pmd'
+
+checkstyle {
+    toolVersion = "6.19"
+}
+
+pmd {
+    toolVersion = '5.4.0'
+    consoleOutput= true
+    ignoreFailures = false
+    ruleSetFiles = files("config/pmd/ruleset.xml")
+    reportsDir = file("build/reports/pmd")
+}
+
+tasks.withType(Pmd){
+    reports {
+        xml.enabled true
+        html.enabled true
+    }
+}
+
+task checkApiIsRaml(type:Exec) {
+    executable "raml-cop"
+    args "src/main/resources/api-definition.yaml"
+}
+
+configure(checkApiIsRaml) {
+    group = JavaBasePlugin.VERIFICATION_GROUP
+    description = 'Verify that the api-specification is valid RAML'
+}
+
+//NOTE: This plugin requires that this task be named 'sonarqube'. In fact, it is performing SonarCloud analysis.
+sonarqube {
+    properties {
+        property "sonar.projectKey", "OpenLMIS_openlmis-report"
+        property "sonar.organization", "openlmis"
+        property "sonar.host.url", "https://sonarcloud.io"
+        property "sonar.java.source", "17"
+        property "sonar.coverage.jacoco.xmlReportPaths", "./report.xml"
+    }
+}

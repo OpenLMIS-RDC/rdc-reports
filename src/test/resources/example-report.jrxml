@@ -1,0 +1,51 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<jasperReport
+        xmlns="http://jasperreports.sourceforge.net/jasperreports"
+        xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+        xsi:schemaLocation="http://jasperreports.sourceforge.net/jasperreports http://jasperreports.sourceforge.net/xsd/jasperreport.xsd"
+        name="test"
+        topMargin="20"
+        bottomMargin="20"
+        uuid="955e72f9-036f-4b8a-b685-7319ed8f2aee">
+
+    <field name="ID" class="java.lang.Integer"/>
+    <field name="Name"/>
+    <field name="Age" class="java.lang.Integer"/>
+
+    <detail>
+        <band height="60">
+            <textField>
+                <reportElement x="0" y="0" width="50" height="20"/>
+                <textFieldExpression><![CDATA["1"]]></textFieldExpression>
+            </textField>
+
+            <textField>
+                <reportElement x="60" y="0" width="200" height="20"/>
+                <textFieldExpression><![CDATA["Alice"]]></textFieldExpression>
+            </textField>
+
+            <textField>
+                <reportElement x="270" y="0" width="50" height="20"/>
+                <textFieldExpression><![CDATA["30"]]></textFieldExpression>
+            </textField>
+        </band>
+
+        <band height="60">
+            <textField>
+                <reportElement x="0" y="20" width="50" height="20"/>
+                <textFieldExpression><![CDATA["2"]]></textFieldExpression>
+            </textField>
+
+            <textField>
+                <reportElement x="60" y="20" width="200" height="20"/>
+                <textFieldExpression><![CDATA["Bob"]]></textFieldExpression>
+            </textField>
+
+            <textField>
+                <reportElement x="270" y="20" width="50" height="20"/>
+                <textFieldExpression><![CDATA["25"]]></textFieldExpression>
+            </textField>
+        </band>
+    </detail>
+
+</jasperReport>

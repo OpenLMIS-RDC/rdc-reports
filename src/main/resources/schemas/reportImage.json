@@ -1,0 +1,24 @@
+{
+  "type": "object",
+  "$schema": "http://json-schema.org/draft-04/schema",
+  "title": "ReportImage",
+  "description": "A single report image",
+  "properties": {
+    "id": {
+      "type": "string",
+      "title": "id"
+    },
+    "name": {
+      "type": "string",
+      "title": "name"
+    },
+    "data": {
+      "type": "string",
+      "title": "data"
+    }
+  } ,
+  "required": [
+    "id",
+    "name"
+  ]
+}

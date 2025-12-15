@@ -1,0 +1,59 @@
+services:
+
+  builder:
+    image: openlmis/dev:10
+    links:
+      - db
+      - log
+    volumes:
+      - '.:/app'
+    command:
+      - './build.sh'
+    environment:
+      GRADLE_OPTS: '-Dorg.gradle.daemon=false'
+    env_file: .env
+
+  sonar:
+    image: openlmis/dev:10
+    links:
+      - db
+      - log
+    volumes:
+      - '.:/app'
+    entrypoint:
+      - 'gradle'
+    command:
+      - 'clean'
+      - 'sonarqube'
+    environment:
+      GRADLE_OPTS: '-Dorg.gradle.daemon=false'
+    env_file: .env
+
+  demo-data:
+    image: openlmis/dev:10
+    links:
+      - db
+      - log
+    volumes:
+      - '.:/app'
+    entrypoint:
+      - 'gradle'
+    command:
+      - 'demoDataSeed'
+    environment:
+      GRADLE_OPTS: '-Dorg.gradle.daemon=false'
+    env_file: .env
+
+  image:
+    build: .
+    image: openlmisrdc/report
+
+  db:
+    image: openlmis/postgres:14-debezium
+    env_file: .env
+
+  log:
+    image: openlmis/rsyslog:3
+    volumes:
+      - '../logs/report:/var/log'
+

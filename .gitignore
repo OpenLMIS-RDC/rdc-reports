@@ -1,0 +1,10 @@
+*.iml
+*.ipr
+*.iws
+.env
+out/
+build/
+node_modules/
+.tx/
+.idea/
+.gradle/

@@ -1,0 +1,53 @@
+{
+  "type": "object",
+  "$schema": "http://json-schema.org/draft-04/schema",
+  "title": "DashboardReportDto",
+  "description": "A single dashboard report",
+  "properties": {
+    "id": {
+      "type": "string",
+      "title": "id"
+    },
+    "name": {
+      "type": "string",
+      "title": "name"
+    },
+    "url": {
+      "type": "string",
+      "title": "url"
+    },
+    "type": {
+      "type": "string",
+      "title": "type",
+      "enum": ["SUPERSET", "POWERBI"]
+    },
+    "enabled": {
+      "type": "boolean",
+      "title": "enabled",
+      "description": "Indicates if the report is enabled"
+    },
+    "showOnHomePage": {
+      "type": "boolean",
+      "title": "showOnHomePage",
+      "description": "Indicates if the report should be displayed on the homepage"
+    },
+    "category": {
+      "type": "object",
+      "$ref": "reportCategoryDto.json"
+    },
+    "rightName": {
+      "type": "string",
+      "title": "rightName"
+    }
+  },
+  "required": [
+    "id",
+    "name",
+    "url",
+    "type",
+    "enabled",
+    "showOnHomePage",
+    "category",
+    "rightName"
+  ]
+}
