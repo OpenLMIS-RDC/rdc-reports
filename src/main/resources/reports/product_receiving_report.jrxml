@@ -87,17 +87,17 @@
   ),
   main_query AS (
     SELECT
-      facilities.name AS facilityName,
       products.fullproductname AS productName,
       products.code AS productCode,
       COALESCE(product_categories.displayname, 'NO_DATA') AS productCategoryName,
       COALESCE(lots.lotcode, 'NO_LOT') AS productLotCode,
       lots.expirationdate AS productExpiryDate,
       lots.manufacturedate AS productManufactureDate,
-      stock_card_line_items.occurreddate AS issueDate,
+      stock_card_line_items.occurreddate AS occurredDate,
       stock_card_line_items.quantity AS quantity,
-      (stock_card_line_items.quantity / products.netcontent) AS quantityPacks,
-      stock_card_line_items.destinationfreetext AS destinationComments,
+      products.netcontent AS netContent,
+      COALESCE(source_facilities.name, 'NO_DATA') AS sourceFacilityName,
+      stock_card_line_items.sourcefreetext AS sourceComments,
       COALESCE(vial_stage.extradata ->> 'vvmStatus', 'NO_DATA') AS vialStage,
       programs.name AS programName,
       COALESCE(stock_card_line_items_reasons.name, 'NO_DATA') AS reasonName,
@@ -123,6 +123,10 @@
       stock_card_line_items_reasons.id
     LEFT JOIN stockmanagement.nodes AS destination_nodes ON
       stock_card_line_items.destinationid = destination_nodes.id
+    LEFT JOIN stockmanagement.nodes AS source_nodes ON
+      stock_card_line_items.sourceid = source_nodes.id
+    LEFT JOIN referencedata.facilities AS source_facilities ON
+      source_nodes.referenceid = source_facilities.id
     LEFT JOIN referencedata.program_orderables AS program_orderables ON
       program_orderables.orderableid = products.id
       AND program_orderables.orderableversionnumber = products.versionnumber
@@ -154,41 +158,41 @@
       AND stock_card_line_items_reasons.reasontype = 'CREDIT'
   	)
 	SELECT
-	  facilityName,
+	  sourceFacilityName,
 	  productName,
 	  productCode,
 	  productCategoryName,
 	  productLotCode,
 	  productExpiryDate,
 	  productManufactureDate,
-	  issueDate,
+	  occurredDate,
 	  quantity,
-	  quantityPacks,
-	  destinationComments,
+	  netContent,
+	  sourceComments,
 	  vialStage,
 	  programName,
 	  reasonName,
 	  reasonComments
 	FROM main_query
 	ORDER BY
-	  facilityName,
+	  sourceFacilityName,
 	  productName,
 	  productCode,
 	  productLotCode,
-	  issueDate,
+	  occurredDate,
 	  reasonName;]]>
 	</queryString>
-	<field name="facilityName" class="java.lang.String"/>
+	<field name="sourceFacilityName" class="java.lang.String"/>
 	<field name="productName" class="java.lang.String"/>
 	<field name="productCode" class="java.lang.String"/>
 	<field name="productCategoryName" class="java.lang.String"/>
 	<field name="productLotCode" class="java.lang.String"/>
 	<field name="productExpiryDate" class="java.lang.String"/>
 	<field name="productManufactureDate" class="java.lang.String"/>
-	<field name="issueDate" class="java.lang.String"/>
-	<field name="quantity" class="java.lang.String"/>
-	<field name="quantityPacks" class="java.lang.String"/>
-	<field name="destinationComments" class="java.lang.String"/>
+	<field name="occurredDate" class="java.lang.String"/>
+	<field name="quantity" class="java.lang.Integer"/>
+	<field name="netContent" class="java.lang.Integer"/>
+	<field name="sourceComments" class="java.lang.String"/>
 	<field name="vialStage" class="java.lang.String"/>
 	<field name="programName" class="java.lang.String"/>
 	<field name="reasonName" class="java.lang.String"/>
@@ -368,7 +372,7 @@
 				<textElement textAlignment="Center" verticalAlignment="Middle">
 					<font fontName="DejaVu Sans" isBold="true"/>
 				</textElement>
-				<textFieldExpression><![CDATA[$R{report.column.facilityName}]]></textFieldExpression>
+				<textFieldExpression><![CDATA[$R{report.column.receivedFrom}]]></textFieldExpression>
 			</textField>
             <textField isStretchWithOverflow="true">
                 <reportElement x="260" y="0" width="60" height="40" stretchType="RelativeToBandHeight" uuid="a20895bc-59a8-4277-9b73-b59218d1eaa2">
@@ -384,7 +388,7 @@
                 <textElement textAlignment="Center" verticalAlignment="Middle">
                     <font fontName="DejaVu Sans" isBold="true"/>
                 </textElement>
-                <textFieldExpression><![CDATA[$R{report.column.destinationComments}]]></textFieldExpression>
+                <textFieldExpression><![CDATA[$R{report.column.sourceComments}]]></textFieldExpression>
             </textField>
 			<textField isStretchWithOverflow="true">
 				<reportElement x="320" y="0" width="60" height="40" stretchType="RelativeToBandHeight" uuid="58d78ee4-5862-4a72-8f1d-b7cc9f8e19f0">
@@ -462,7 +466,7 @@
 				<textElement textAlignment="Center" verticalAlignment="Middle">
 					<font fontName="DejaVu Sans" isBold="true"/>
 				</textElement>
-				<textFieldExpression><![CDATA[$R{report.column.issueDate}]]></textFieldExpression>
+				<textFieldExpression><![CDATA[$R{report.column.receivedDate}]]></textFieldExpression>
 			</textField>
 			<textField isStretchWithOverflow="true">
 				<reportElement x="570" y="0" width="50" height="40" stretchType="RelativeToBandHeight" uuid="f52a7cda-ab58-409e-8450-541f765dc6d1">
@@ -535,7 +539,7 @@
 	<detail>
 		<band height="46" splitType="Prevent">
 			<property name="com.jaspersoft.studio.unit.height" value="px"/>
-			<printWhenExpression><![CDATA[new Boolean($V{REPORT_COUNT}.intValue()!=0) && $F{issueDate} != null]]></printWhenExpression>
+			<printWhenExpression><![CDATA[new Boolean($V{REPORT_COUNT}.intValue()!=0) && $F{occurredDate} != null]]></printWhenExpression>
 			<rectangle>
 				<reportElement stretchType="RelativeToBandHeight" x="0" y="0" width="801" height="45" backcolor="#F0F0F0" uuid="2de367b0-e3ff-42e2-b474-e9accdcd1c69"/>
 				<graphicElement>
@@ -566,7 +570,7 @@
 					<font isBold="false"/>
 					<paragraph lineSpacing="1_1_2"/>
 				</textElement>
-				<textFieldExpression><![CDATA[$F{destinationComments}]]></textFieldExpression>
+				<textFieldExpression><![CDATA[$F{sourceComments}]]></textFieldExpression>
 			</textField>
 			<textField isBlankWhenNull="true">
 				<reportElement x="40" y="0" width="75" height="45" uuid="158b0d96-0c90-48a4-87de-36d2380266af">
@@ -603,7 +607,7 @@
 					<font isBold="false"/>
 					<paragraph lineSpacing="1_1_2"/>
 				</textElement>
-				<textFieldExpression><![CDATA[$F{facilityName}]]></textFieldExpression>
+				<textFieldExpression><![CDATA[$F{sourceFacilityName}]]></textFieldExpression>
 			</textField>
 			<textField isBlankWhenNull="true">
 				<reportElement x="430" y="0" width="40" height="45" uuid="78e963fe-1d67-4d4f-b70b-6005eaabf0dc">
@@ -616,7 +620,12 @@
 					<font isBold="false"/>
 					<paragraph lineSpacing="1_1_2"/>
 				</textElement>
-				<textFieldExpression><![CDATA[$F{quantityPacks}]]></textFieldExpression>
+                <textFieldExpression><![CDATA[
+                    $F{quantity} == null ? "" : (
+                        ($F{quantity} / ($F{netContent} == null ? 1 : $F{netContent}))
+                              + " (+" + ($F{quantity} % ($F{netContent} == null ? 1 : $F{netContent})) + ")"
+                    )]]>
+                </textFieldExpression>
 			</textField>
 			<textField isBlankWhenNull="true">
 				<reportElement x="320" y="0" width="60" height="45" uuid="78e963fe-1d67-4d4f-b70b-6005eaabf0dc">
@@ -666,7 +675,7 @@
 					<font isBold="false"/>
 					<paragraph lineSpacing="1_1_2"/>
 				</textElement>
-				<textFieldExpression><![CDATA[$F{issueDate}]]></textFieldExpression>
+				<textFieldExpression><![CDATA[$F{occurredDate}]]></textFieldExpression>
 			</textField>
 			<textField isBlankWhenNull="true">
 				<reportElement x="740" y="0" width="60" height="45" uuid="f3560ac2-bf30-4bd9-a83f-0058308c73c9">
@@ -739,7 +748,7 @@
 		<band height="52">
 			<textField>
 				<reportElement positionType="FixRelativeToBottom" x="0" y="0" width="800" height="51" uuid="4924999e-3ae8-4199-b874-b6b5ae838170">
-					<printWhenExpression><![CDATA[new Boolean($V{REPORT_COUNT}.intValue()==0) || (new Boolean($V{REPORT_COUNT}.intValue()==1) && $F{issueDate} == null)]]></printWhenExpression>
+					<printWhenExpression><![CDATA[new Boolean($V{REPORT_COUNT}.intValue()==0) || (new Boolean($V{REPORT_COUNT}.intValue()==1) && $F{occurredDate} == null)]]></printWhenExpression>
 				</reportElement>
 				<textElement textAlignment="Center" verticalAlignment="Middle">
 					<font size="12" isBold="true"/>
