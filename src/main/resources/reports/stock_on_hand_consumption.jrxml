@@ -1,0 +1,664 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- Created with Jaspersoft Studio version 6.21.5.final using JasperReports Library version 6.5.1  -->
+<jasperReport xmlns="http://jasperreports.sourceforge.net/jasperreports" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://jasperreports.sourceforge.net/jasperreports http://jasperreports.sourceforge.net/xsd/jasperreport.xsd" name="PeriodicStockOnHandSummary" pageWidth="842" pageHeight="595" orientation="Landscape" whenNoDataType="AllSectionsNoDetail" columnWidth="555" leftMargin="20" rightMargin="20" topMargin="20" bottomMargin="20" isFloatColumnFooter="true" resourceBundle="resourceBundles/report_translations" uuid="caa0ba4c-33e9-4f02-bd4b-5440eeadf3a9">
+	<property name="com.jaspersoft.studio.data.defaultdataadapter" value="One Empty Record"/>
+	<property name="net.sf.jasperreports.export.xlsx.exclude.origin.band.1" value="pageHeader"/>
+	<property name="net.sf.jasperreports.export.xlsx.exclude.origin.band.2" value="pageFooter"/>
+	<property name="net.sf.jasperreports.export.xlsx.exclude.origin.keep.first.band.1" value="columnHeader"/>
+	<property name="net.sf.jasperreports.export.xlsx.remove.empty.space.between.rows" value="true"/>
+	<property name="net.sf.jasperreports.export.xlsx.exclude.key.PaginationText"/>
+	<property name="net.sf.jasperreports.export.xls.exclude.origin.band.1" value="pageHeader"/>
+	<property name="net.sf.jasperreports.export.xls.exclude.origin.band.2" value="pageFooter"/>
+	<property name="net.sf.jasperreports.export.xls.exclude.origin.keep.first.band.1" value="columnHeader"/>
+	<property name="net.sf.jasperreports.export.xls.remove.empty.space.between.rows" value="true"/>
+	<property name="net.sf.jasperreports.export.xls.exclude.key.PaginationText"/>
+	<property name="net.sf.jasperreports.export.csv.exclude.origin.keep.first.band.1" value="columnHeader"/>
+	<property name="net.sf.jasperreports.export.csv.exclude.origin.band.1" value="pageHeader"/>
+	<property name="net.sf.jasperreports.export.csv.exclude.origin.band.2" value="pageFooter"/>
+	<property name="net.sf.jasperreports.export.csv.exclude.key.PaginationText"/>
+	<style name="BaseStyle" isDefault="true" fontName="DejaVu Sans" fontSize="10"/>
+	<parameter name="date" class="java.lang.String" nestedType="java.lang.String">
+		<property name="displayName" value="Date"/>
+		<property name="required" value="true"/>
+		<parameterDescription><![CDATA[datepickers]]></parameterDescription>
+	</parameter>
+	<parameter name="geographicZone" class="java.lang.String" nestedType="java.lang.String">
+		<property name="displayName" value="Geographic Zone"/>
+		<property name="selectExpression" value="/api/geographicZones"/>
+		<property name="selectProperty" value="name"/>
+		<property name="required" value="false"/>
+	</parameter>
+	<parameter name="facilityType" class="java.lang.String" nestedType="java.lang.String">
+		<property name="displayName" value="Facility Type"/>
+		<property name="selectExpression" value="/api/facilityTypes"/>
+		<property name="selectProperty" value="name"/>
+		<property name="required" value="false"/>
+	</parameter>
+	<parameter name="facility" class="java.lang.String" nestedType="java.lang.String">
+		<property name="displayName" value="Facility"/>
+		<property name="selectExpression" value="/api/facilities"/>
+		<property name="selectProperty" value="name"/>
+		<property name="required" value="false"/>
+	</parameter>
+	<parameter name="program" class="java.lang.String" nestedType="java.lang.String">
+		<property name="displayName" value="Program"/>
+		<property name="selectExpression" value="/api/programs"/>
+		<property name="selectProperty" value="name"/>
+		<property name="required" value="false"/>
+	</parameter>
+	<parameter name="product" class="java.lang.String" nestedType="java.lang.String">
+		<property name="displayName" value="Product"/>
+		<property name="selectExpression" value="/api/orderables"/>
+		<property name="selectProperty" value="fullProductName"/>
+		<property name="required" value="false"/>
+	</parameter>
+	<parameter name="userId" class="java.lang.String" isForPrompting="false">
+		<property name="displayName" value="ID of the currently authenticated user - should not be in template parameters"/>
+		<property name="required" value="false"/>
+	</parameter>
+	<parameter name="headerTemplate" class="net.sf.jasperreports.engine.JasperReport" isForPrompting="false"/>
+	<queryString>
+		<![CDATA[with
+  RECURSIVE findChildZones AS (
+    SELECT * FROM referencedata.geographic_zones WHERE name = $P{geographicZone}::varchar
+    UNION ALL
+    SELECT referencedata.geographic_zones.* FROM referencedata.geographic_zones
+    JOIN findChildZones ON findChildZones.id = referencedata.geographic_zones.parentId
+  ),
+  latest_orderable_identifiers AS (
+    SELECT DISTINCT ON (orderableid)
+      orderableid, value, orderableversionnumber
+    FROM referencedata.orderable_identifiers
+    WHERE "key" = 'tradeItem'
+    ORDER BY orderableid, orderableversionnumber DESC
+  ),
+  user_rights AS (
+    SELECT facilityid, programid, userid
+    FROM referencedata.right_assignments ra
+    WHERE ra.rightname = 'STOCK_CARDS_VIEW' AND ra.userId = $P{userId}::uuid
+  ),
+  products_allowed AS (
+  	SELECT
+  		DISTINCT(products.id) AS productid,
+  		MAX(products.versionnumber) AS productversionnumber,
+  		facilities.id AS facilityid
+  	FROM referencedata.orderables AS products
+    JOIN stockmanagement.stock_cards AS sc ON products.id = sc.orderableid
+    JOIN stockmanagement.stock_card_line_items AS scli ON sc.id = scli.stockcardid
+    JOIN referencedata.facilities AS facilities ON facilities.id = sc.facilityid
+    JOIN referencedata.facility_types AS facilities_types ON facilities_types.id = facilities.typeid
+    JOIN referencedata.geographic_zones AS zones ON zones.id = facilities.geographiczoneid
+    JOIN referencedata.programs AS programs ON sc.programid = programs.id
+    JOIN user_rights AS ur ON programs.id = ur.programid
+    	AND facilities.id = ur.facilityid
+	LEFT JOIN latest_orderable_identifiers AS orderable_identifiers ON
+      products.id = orderable_identifiers.orderableid
+      AND products.versionnumber = orderable_identifiers.orderableversionnumber
+  	WHERE
+      (facilities.name = $P{facility} OR $P{facility} IS NULL)
+      AND (facilities_types.name = $P{facilityType} OR $P{facilityType} IS NULL)
+      AND (zones.id IN (SELECT id FROM findChildZones) OR $P{geographicZone} IS NULL)
+      AND (products.fullproductname = $P{product} OR $P{product} IS NULL)
+      AND (programs.name = $P{program} OR $P{program} IS NULL)
+      AND (
+        ($P{date} IS NOT NULL AND scli.occurreddate <= $P{date}::date)
+        OR $P{date} IS NULL
+      )
+      GROUP BY products.id, facilities.id
+  ),
+  opening_stock_data AS (
+  	SELECT
+  	  sc.orderableid AS productid,
+  	  sc.facilityid AS facilityid,
+  	  SUM(latest_soh.stockonhand) AS opening_stock
+  	FROM stockmanagement.stock_cards sc
+    JOIN products_allowed pa ON sc.orderableid = pa.productid
+      AND sc.facilityid = pa.facilityid
+    JOIN LATERAL (
+      SELECT csoh.stockonhand
+      FROM stockmanagement.calculated_stocks_on_hand csoh
+      WHERE csoh.stockcardid = sc.id
+      ORDER BY csoh.occurreddate DESC
+      LIMIT 1
+    ) latest_soh ON TRUE
+    GROUP BY sc.orderableid, sc.facilityid
+  ),
+  soh_data AS (
+  	SELECT
+  	  products.id AS productid,
+  	  f.id AS facilityid,
+	  SUM(soh.stockonhand) AS stockonhand
+  	FROM stockmanagement.stock_cards AS stock_cards
+    JOIN stockmanagement.calculated_stocks_on_hand AS soh ON soh.stockcardid = stock_cards.id
+    JOIN (
+      SELECT
+        stockcardid,
+        MAX(occurreddate) AS max_date
+      FROM
+        stockmanagement.calculated_stocks_on_hand
+      WHERE
+        occurreddate::varchar <= $P{date}::varchar
+      GROUP BY
+        stockcardid
+    ) AS cs ON cs.stockcardid = soh.stockcardid AND cs.max_date = soh.occurreddate
+    JOIN referencedata.orderables products ON products.id = stock_cards.orderableid
+    JOIN referencedata.facilities f ON stock_cards.facilityid = f.id
+    JOIN products_allowed pa ON products.id = pa.productid
+      AND products.versionnumber = pa.productversionnumber
+      AND stock_cards.facilityid = pa.facilityid
+    GROUP BY products.id, f.id
+  ),
+  quantity_data AS (
+  	SELECT
+      sc.orderableid AS productid,
+      sc.facilityid AS facilityid,
+      SUM(scli.quantity) FILTER (WHERE scli.sourceid IS NOT NULL) AS quantity_received,
+      SUM(scli.quantity) FILTER (WHERE scli.destinationid IS NOT NULL) AS quantity_issued,
+      SUM(scli.quantity) FILTER (WHERE scli.reasonid IS NOT NULL
+        AND scli.sourceid IS NULL AND scli.destinationid IS null
+        AND sclir.reasontype = 'CREDIT') AS quantity_adjusted_credit,
+      SUM(scli.quantity) FILTER (WHERE scli.reasonid IS NOT NULL
+        AND scli.sourceid IS NULL AND scli.destinationid IS null
+        AND sclir.reasontype = 'DEBIT') AS quantity_adjusted_debit,
+      SUM(adjustments.quantity) FILTER (WHERE sclir.reasontype = 'CREDIT') AS quantity_physical_inventory_adjusted_credit,
+      SUM(adjustments.quantity) FILTER (WHERE sclir.reasontype = 'DEBIT') AS quantity_physical_inventory_adjusted_debit
+    FROM stockmanagement.stock_card_line_items scli
+    JOIN stockmanagement.stock_cards sc ON scli.stockcardid = sc.id
+    JOIN referencedata.orderables products ON products.id = sc.orderableid
+    JOIN products_allowed pa ON products.id = pa.productid
+      AND products.versionnumber = pa.productversionnumber
+      AND sc.facilityid = pa.facilityid
+    LEFT JOIN stockmanagement.physical_inventory_line_item_adjustments adjustments ON scli.id = adjustments.stockcardlineitemid
+    LEFT JOIN stockmanagement.stock_card_line_item_reasons sclir
+      ON scli.reasonid = sclir.id OR adjustments.reasonid = sclir.id
+    GROUP BY sc.orderableid, sc.facilityid
+  )
+  select
+  	products.code AS productCode,
+  	products.fullproductname AS productName,
+  	product_categories.displayname AS productCategoryName,
+  	facilities.name AS facilityName,
+  	0 AS reasonName,
+  	COALESCE(osd.opening_stock, 0) AS openingStock,
+  	COALESCE(cdd.quantity_received, 0) AS stockReceived,
+  	COALESCE(cdd.quantity_issued, 0) AS issuedQuantity,
+  	COALESCE(cdd.quantity_adjusted_credit, 0) - COALESCE(cdd.quantity_adjusted_debit, 0)
+  	  + COALESCE(cdd.quantity_physical_inventory_adjusted_credit, 0) - COALESCE(cdd.quantity_physical_inventory_adjusted_debit, 0)
+  	  AS adjustment,
+  	COALESCE(soh.stockonhand, 0) AS stockOnHand,
+  	0 AS averageMonthlyConsumption
+  FROM referencedata.orderables AS products
+  JOIN products_allowed AS pa ON products.id = pa.productid
+      AND products.versionnumber = pa.productversionnumber
+  LEFT JOIN opening_stock_data AS osd
+    ON products.id = osd.productid AND pa.facilityid = osd.facilityid
+  LEFT JOIN quantity_data AS cdd
+    ON products.id = cdd.productid AND pa.facilityid = cdd.facilityid
+  LEFT JOIN soh_data AS soh
+    ON products.id = soh.productid AND pa.facilityid = soh.facilityid
+  LEFT JOIN referencedata.facilities AS facilities ON facilities.id = pa.facilityid
+  LEFT JOIN referencedata.program_orderables AS program_orderables ON
+    program_orderables.orderableid = products.id
+    AND program_orderables.orderableversionnumber = products.versionnumber
+  LEFT JOIN referencedata.orderable_display_categories AS product_categories ON
+    product_categories.id = program_orderables.orderabledisplaycategoryid
+  ORDER BY facilities.name, products.code]]>
+	</queryString>
+	<field name="facilityName" class="java.lang.String"/>
+	<field name="productName" class="java.lang.String"/>
+	<field name="productCode" class="java.lang.String"/>
+	<field name="productCategoryName" class="java.lang.String"/>
+	<field name="openingStock" class="java.lang.String"/>
+	<field name="stockReceived" class="java.lang.String"/>
+	<field name="reasonName" class="java.lang.String"/>
+	<field name="issuedQuantity" class="java.lang.String"/>
+	<field name="adjustment" class="java.lang.String"/>
+	<field name="stockOnHand" class="java.lang.String"/>
+	<field name="averageMonthlyConsumption" class="java.lang.String"/>
+	<background>
+		<band splitType="Stretch"/>
+	</background>
+	<title>
+		<band height="92" splitType="Stretch">
+			<subreport overflowType="Stretch">
+				<reportElement positionType="Float" mode="Transparent" x="-22" y="0" width="842" height="90" isRemoveLineWhenBlank="true" isPrintWhenDetailOverflows="true" uuid="57924a28-dd0b-4ed5-8b5c-8867c356fb34">
+					<property name="com.jaspersoft.studio.unit.height" value="px"/>
+					<property name="com.jaspersoft.studio.unit.x" value="pixel"/>
+					<property name="com.jaspersoft.studio.unit.width" value="px"/>
+					<property name="com.jaspersoft.studio.unit.y" value="px"/>
+				</reportElement>
+				<parametersMapExpression><![CDATA[$P{REPORT_PARAMETERS_MAP}]]></parametersMapExpression>
+				<connectionExpression><![CDATA[$P{REPORT_CONNECTION}]]></connectionExpression>
+				<subreportExpression><![CDATA[$P{headerTemplate}]]></subreportExpression>
+			</subreport>
+		</band>
+	</title>
+	<pageHeader>
+		<band height="114" splitType="Stretch">
+			<printWhenExpression><![CDATA[new Boolean($V{PAGE_NUMBER}.intValue()==1)]]></printWhenExpression>
+			<rectangle>
+				<reportElement x="0" y="10" width="800" height="35" backcolor="#C0C0C0" uuid="1d9034c0-77df-4000-920e-06594b2ebeb6">
+					<property name="com.jaspersoft.studio.unit.height" value="px"/>
+				</reportElement>
+				<graphicElement>
+					<pen lineWidth="0.0"/>
+				</graphicElement>
+			</rectangle>
+			<textField>
+				<reportElement x="0" y="10" width="800" height="34" forecolor="#FFFFFF" uuid="0e3cc6fc-7fea-4050-a800-2f5beff70890"/>
+				<textElement textAlignment="Center" verticalAlignment="Middle">
+					<font size="24" isBold="true"/>
+				</textElement>
+				<textFieldExpression><![CDATA[$R{report.title.stockOnHand}]]></textFieldExpression>
+			</textField>
+			<textField>
+				<reportElement x="0" y="55" width="230" height="20" uuid="c99c8f1c-d3d3-4020-8541-2da7e1a48466"/>
+				<textElement textAlignment="Left" verticalAlignment="Middle">
+					<font isBold="true"/>
+				</textElement>
+				<textFieldExpression><![CDATA[$P{geographicZone} != null ? $R{report.header.geographicZone} : ($P{facilityType} != null ? $R{report.header.facilityType} : $R{report.header.facility})]]></textFieldExpression>
+			</textField>
+			<textField>
+				<reportElement x="230" y="55" width="202" height="20" uuid="dca5e26f-c56e-4405-b824-e7f5516e0a7e"/>
+				<textElement textAlignment="Left" verticalAlignment="Middle">
+					<font size="10" isBold="true"/>
+				</textElement>
+				<textFieldExpression><![CDATA[$R{report.header.program}]]></textFieldExpression>
+			</textField>
+			<textField>
+				<reportElement x="432" y="55" width="208" height="20" uuid="48e7b132-74de-44e8-9a1f-5ab8e86adeb5"/>
+				<textElement textAlignment="Left" verticalAlignment="Middle">
+					<font size="10" isBold="true"/>
+				</textElement>
+				<textFieldExpression><![CDATA[$R{report.header.stockDate}]]></textFieldExpression>
+			</textField>
+			<textField>
+				<reportElement key="" x="640" y="55" width="161" height="20" uuid="4b505859-702c-4523-b9ee-567234bef054">
+					<property name="com.jaspersoft.studio.unit.width" value="pixel"/>
+				</reportElement>
+				<textElement textAlignment="Left" verticalAlignment="Middle">
+					<font size="10" isBold="true"/>
+				</textElement>
+				<textFieldExpression><![CDATA[$R{report.header.reportDate}]]></textFieldExpression>
+			</textField>
+			<textField>
+				<reportElement x="0" y="80" width="230" height="20" uuid="a8565621-bd19-4b76-bd5e-280c405039c6"/>
+				<textFieldExpression><![CDATA[$P{geographicZone} != null ? $P{geographicZone} :
+    				($P{facilityType} != null ? $P{facilityType} :
+    				($P{facility} != null ? $P{facility} : "All"))]]></textFieldExpression>
+			</textField>
+			<textField>
+				<reportElement x="230" y="80" width="202" height="20" uuid="c88caf12-452e-4beb-846a-faadd85f251e"/>
+				<textFieldExpression><![CDATA[$P{program} != null ? $P{program} : "All"]]></textFieldExpression>
+			</textField>
+			<textField>
+				<reportElement x="432" y="80" width="208" height="20" uuid="36f32e3f-b43e-458c-8724-9ea5571e0369"/>
+				<textFieldExpression><![CDATA[$P{date}]]></textFieldExpression>
+			</textField>
+			<textField pattern="MMM d, yyyy">
+				<reportElement x="640" y="80" width="161" height="20" uuid="1a79bec9-bcf9-40b7-9530-86290dcd415f"/>
+				<textFieldExpression><![CDATA[new SimpleDateFormat("yyyy-MM-dd").format(new java.util.Date())]]></textFieldExpression>
+			</textField>
+		</band>
+	</pageHeader>
+	<columnHeader>
+		<band height="40" splitType="Stretch">
+			<property name="com.jaspersoft.studio.unit.height" value="px"/>
+			<rectangle>
+				<reportElement stretchType="RelativeToBandHeight" x="0" y="0" width="801" height="40" backcolor="#C0C0C0" uuid="5ef622da-a8e3-4110-ba9e-b2b9f14d8eaa">
+					<property name="com.jaspersoft.studio.unit.height" value="px"/>
+				</reportElement>
+				<graphicElement>
+					<pen lineWidth="0.0"/>
+				</graphicElement>
+			</rectangle>
+			<textField isStretchWithOverflow="true">
+				<reportElement stretchType="RelativeToBandHeight" x="0" y="0" width="80" height="40" uuid="d6aeff36-c462-4fcd-9b56-19d439c2a1d3">
+					<property name="com.jaspersoft.studio.unit.width" value="px"/>
+				</reportElement>
+				<box topPadding="1" leftPadding="1" bottomPadding="1" rightPadding="1">
+					<pen lineWidth="1.0" lineColor="#80C7E8"/>
+					<topPen lineWidth="0.0" lineStyle="Solid" lineColor="#000000"/>
+					<leftPen lineWidth="0.0" lineStyle="Solid" lineColor="#000000"/>
+					<bottomPen lineWidth="0.0" lineStyle="Solid" lineColor="#000000"/>
+					<rightPen lineWidth="0.0" lineStyle="Solid" lineColor="#000000"/>
+				</box>
+				<textElement textAlignment="Center" verticalAlignment="Middle">
+					<font fontName="DejaVu Sans" isBold="true"/>
+				</textElement>
+				<textFieldExpression><![CDATA[$R{report.column.facility}]]></textFieldExpression>
+			</textField>
+			<textField isStretchWithOverflow="true">
+				<reportElement stretchType="RelativeToBandHeight" x="80" y="0" width="80" height="40" uuid="d6aeff36-c462-4fcd-9b56-19d439c2a1d3">
+					<property name="com.jaspersoft.studio.unit.width" value="px"/>
+				</reportElement>
+				<box topPadding="1" leftPadding="1" bottomPadding="1" rightPadding="1">
+					<pen lineWidth="1.0" lineColor="#80C7E8"/>
+					<topPen lineWidth="0.0" lineStyle="Solid" lineColor="#000000"/>
+					<leftPen lineWidth="0.0" lineStyle="Solid" lineColor="#000000"/>
+					<bottomPen lineWidth="0.0" lineStyle="Solid" lineColor="#000000"/>
+					<rightPen lineWidth="0.0" lineStyle="Solid" lineColor="#000000"/>
+				</box>
+				<textElement textAlignment="Center" verticalAlignment="Middle">
+					<font fontName="DejaVu Sans" isBold="true"/>
+				</textElement>
+				<textFieldExpression><![CDATA[$R{report.column.productCode}]]></textFieldExpression>
+			</textField>
+			<textField isStretchWithOverflow="true">
+				<reportElement stretchType="RelativeToBandHeight" x="160" y="0" width="110" height="40" uuid="03e904f1-b042-46fc-b9dc-8df07c88dc7e">
+					<property name="com.jaspersoft.studio.unit.width" value="px"/>
+				</reportElement>
+				<box topPadding="1" leftPadding="1" bottomPadding="1" rightPadding="1">
+					<pen lineWidth="1.0" lineColor="#80C7E8"/>
+					<topPen lineWidth="0.0" lineStyle="Solid" lineColor="#000000"/>
+					<leftPen lineWidth="0.0" lineStyle="Solid" lineColor="#000000"/>
+					<bottomPen lineWidth="0.0" lineStyle="Solid" lineColor="#000000"/>
+					<rightPen lineWidth="0.0" lineStyle="Solid" lineColor="#000000"/>
+				</box>
+				<textElement textAlignment="Center" verticalAlignment="Middle">
+					<font fontName="DejaVu Sans" isBold="true"/>
+				</textElement>
+				<textFieldExpression><![CDATA[$R{report.column.productName}]]></textFieldExpression>
+			</textField>
+			<textField isStretchWithOverflow="true">
+				<reportElement stretchType="RelativeToBandHeight" x="270" y="0" width="80" height="40" uuid="60ff0094-adb4-44c7-b2d1-c3eae0a11aa6">
+					<property name="com.jaspersoft.studio.unit.width" value="px"/>
+				</reportElement>
+				<box topPadding="1" leftPadding="1" bottomPadding="1" rightPadding="1">
+					<pen lineWidth="1.0" lineColor="#80C7E8"/>
+					<topPen lineWidth="0.0" lineStyle="Solid" lineColor="#000000"/>
+					<leftPen lineWidth="0.0" lineStyle="Solid" lineColor="#000000"/>
+					<bottomPen lineWidth="0.0" lineStyle="Solid" lineColor="#000000"/>
+					<rightPen lineWidth="0.0" lineStyle="Solid" lineColor="#000000"/>
+				</box>
+				<textElement textAlignment="Center" verticalAlignment="Middle">
+					<font fontName="DejaVu Sans" isBold="true"/>
+				</textElement>
+				<textFieldExpression><![CDATA[$R{report.column.productCategory}]]></textFieldExpression>
+			</textField>
+			<textField isStretchWithOverflow="true">
+				<reportElement stretchType="RelativeToBandHeight" x="350" y="0" width="60" height="40" uuid="e8d1da5c-0be4-4e92-971f-951aefa16f30">
+					<property name="com.jaspersoft.studio.unit.width" value="px"/>
+				</reportElement>
+				<box topPadding="1" leftPadding="1" bottomPadding="1" rightPadding="1">
+					<pen lineWidth="1.0" lineColor="#80C7E8"/>
+					<topPen lineWidth="0.0" lineStyle="Solid" lineColor="#000000"/>
+					<leftPen lineWidth="0.0" lineStyle="Solid" lineColor="#000000"/>
+					<bottomPen lineWidth="0.0" lineStyle="Solid" lineColor="#000000"/>
+					<rightPen lineWidth="0.0" lineStyle="Solid" lineColor="#000000"/>
+				</box>
+				<textElement textAlignment="Center" verticalAlignment="Middle">
+					<font fontName="DejaVu Sans" isBold="true"/>
+				</textElement>
+				<textFieldExpression><![CDATA[$R{report.column.openingStock}]]></textFieldExpression>
+			</textField>
+			<textField isStretchWithOverflow="true">
+				<reportElement stretchType="RelativeToBandHeight" x="410" y="0" width="60" height="40" uuid="a20895bc-59a8-4277-9b73-b59218d1eaa2"/>
+				<box topPadding="1" leftPadding="1" bottomPadding="1" rightPadding="1">
+					<pen lineWidth="1.0" lineColor="#80C7E8"/>
+					<topPen lineWidth="0.0" lineStyle="Solid" lineColor="#000000"/>
+					<leftPen lineWidth="0.0" lineStyle="Solid" lineColor="#000000"/>
+					<bottomPen lineWidth="0.0" lineStyle="Solid" lineColor="#000000"/>
+					<rightPen lineWidth="0.0" lineStyle="Solid" lineColor="#000000"/>
+				</box>
+				<textElement textAlignment="Center" verticalAlignment="Middle">
+					<font fontName="DejaVu Sans" isBold="true"/>
+				</textElement>
+				<textFieldExpression><![CDATA[$R{report.column.stockReceived}]]></textFieldExpression>
+			</textField>
+			<textField isStretchWithOverflow="true">
+				<reportElement stretchType="RelativeToBandHeight" x="470" y="0" width="90" height="40" uuid="58d78ee4-5862-4a72-8f1d-b7cc9f8e19f0">
+					<property name="com.jaspersoft.studio.unit.width" value="px"/>
+				</reportElement>
+				<box topPadding="1" leftPadding="1" bottomPadding="1" rightPadding="1">
+					<pen lineWidth="1.0" lineColor="#80C7E8"/>
+					<topPen lineWidth="0.0" lineStyle="Solid" lineColor="#000000"/>
+					<leftPen lineWidth="0.0" lineStyle="Solid" lineColor="#000000"/>
+					<bottomPen lineWidth="0.0" lineStyle="Solid" lineColor="#000000"/>
+					<rightPen lineWidth="0.0" lineStyle="Solid" lineColor="#000000"/>
+				</box>
+				<textElement textAlignment="Center" verticalAlignment="Middle">
+					<font fontName="DejaVu Sans" isBold="true"/>
+				</textElement>
+				<textFieldExpression><![CDATA[$R{report.column.reason}]]></textFieldExpression>
+			</textField>
+			<textField isStretchWithOverflow="true">
+				<reportElement stretchType="RelativeToBandHeight" x="560" y="0" width="60" height="40" uuid="0d0c5ae9-aa48-4ecd-b0e9-e2a9f824c218"/>
+				<box topPadding="1" leftPadding="1" bottomPadding="1" rightPadding="1">
+					<pen lineWidth="1.0" lineColor="#80C7E8"/>
+					<topPen lineWidth="0.0" lineStyle="Solid" lineColor="#000000"/>
+					<leftPen lineWidth="0.0" lineStyle="Solid" lineColor="#000000"/>
+					<bottomPen lineWidth="0.0" lineStyle="Solid" lineColor="#000000"/>
+					<rightPen lineWidth="0.0" lineStyle="Solid" lineColor="#000000"/>
+				</box>
+				<textElement textAlignment="Center" verticalAlignment="Middle">
+					<font fontName="DejaVu Sans" isBold="true"/>
+				</textElement>
+				<textFieldExpression><![CDATA[$R{report.column.issuedQuantity}]]></textFieldExpression>
+			</textField>
+			<textField isStretchWithOverflow="true">
+				<reportElement stretchType="RelativeToBandHeight" x="620" y="0" width="60" height="40" uuid="0f4fdf0c-afe1-4846-9204-486a6f8a9cff"/>
+				<box topPadding="1" leftPadding="1" bottomPadding="1" rightPadding="1">
+					<pen lineWidth="1.0" lineColor="#80C7E8"/>
+					<topPen lineWidth="0.0" lineStyle="Solid" lineColor="#000000"/>
+					<leftPen lineWidth="0.0" lineStyle="Solid" lineColor="#000000"/>
+					<bottomPen lineWidth="0.0" lineStyle="Solid" lineColor="#000000"/>
+					<rightPen lineWidth="0.0" lineStyle="Solid" lineColor="#000000"/>
+				</box>
+				<textElement textAlignment="Center" verticalAlignment="Middle">
+					<font fontName="DejaVu Sans" isBold="true"/>
+				</textElement>
+				<textFieldExpression><![CDATA[$R{report.column.adjustments}]]></textFieldExpression>
+			</textField>
+			<textField isStretchWithOverflow="true">
+				<reportElement stretchType="RelativeToBandHeight" x="680" y="0" width="60" height="40" uuid="50db7058-7e22-455f-8d1c-74bb24ec4033"/>
+				<box topPadding="1" leftPadding="1" bottomPadding="1" rightPadding="1">
+					<pen lineWidth="1.0" lineColor="#80C7E8"/>
+					<topPen lineWidth="0.0" lineStyle="Solid" lineColor="#000000"/>
+					<leftPen lineWidth="0.0" lineStyle="Solid" lineColor="#000000"/>
+					<bottomPen lineWidth="0.0" lineStyle="Solid" lineColor="#000000"/>
+					<rightPen lineWidth="0.0" lineStyle="Solid" lineColor="#000000"/>
+				</box>
+				<textElement textAlignment="Center" verticalAlignment="Middle">
+					<font fontName="DejaVu Sans" isBold="true"/>
+				</textElement>
+				<textFieldExpression><![CDATA[$R{report.column.stockOnHand}]]></textFieldExpression>
+			</textField>
+			<textField isStretchWithOverflow="true">
+				<reportElement stretchType="RelativeToBandHeight" x="740" y="0" width="60" height="40" uuid="f52a7cda-ab58-409e-8450-541f765dc6d1"/>
+				<box topPadding="1" leftPadding="1" bottomPadding="1" rightPadding="1">
+					<pen lineWidth="1.0" lineColor="#80C7E8"/>
+					<topPen lineWidth="0.0" lineStyle="Solid" lineColor="#000000"/>
+					<leftPen lineWidth="0.0" lineStyle="Solid" lineColor="#000000"/>
+					<bottomPen lineWidth="0.0" lineStyle="Solid" lineColor="#000000"/>
+					<rightPen lineWidth="0.0" lineStyle="Solid" lineColor="#000000"/>
+				</box>
+				<textElement textAlignment="Center" verticalAlignment="Middle">
+					<font fontName="DejaVu Sans" isBold="true"/>
+				</textElement>
+				<textFieldExpression><![CDATA[$R{report.column.averageMonthlyConsumption}]]></textFieldExpression>
+			</textField>
+		</band>
+	</columnHeader>
+	<detail>
+		<band height="45" splitType="Prevent">
+			<property name="com.jaspersoft.studio.unit.height" value="px"/>
+			<printWhenExpression><![CDATA[new Boolean($V{REPORT_COUNT}.intValue()!=0) && $F{productCode} != null]]></printWhenExpression>
+			<rectangle>
+				<reportElement stretchType="RelativeToBandHeight" x="0" y="0" width="801" height="45" backcolor="#F0F0F0" uuid="2de367b0-e3ff-42e2-b474-e9accdcd1c69"/>
+				<graphicElement>
+					<pen lineWidth="0.0"/>
+				</graphicElement>
+			</rectangle>
+			<textField isBlankWhenNull="true">
+				<reportElement x="0" y="0" width="80" height="45" uuid="22c747ca-ce9b-42ff-883b-ba6d9bcce6c2">
+					<property name="com.jaspersoft.studio.unit.width" value="px"/>
+					<property name="com.jaspersoft.studio.unit.height" value="pixel"/>
+				</reportElement>
+				<box>
+					<pen lineWidth="0.25" lineColor="#D2D2D2"/>
+				</box>
+				<textElement textAlignment="Center" verticalAlignment="Middle">
+					<font isBold="false"/>
+					<paragraph lineSpacing="1_1_2"/>
+				</textElement>
+				<textFieldExpression><![CDATA[$F{facilityName}]]></textFieldExpression>
+			</textField>
+			<textField isBlankWhenNull="true">
+				<reportElement x="80" y="0" width="80" height="45" uuid="22c747ca-ce9b-42ff-883b-ba6d9bcce6c2">
+					<property name="com.jaspersoft.studio.unit.width" value="px"/>
+					<property name="com.jaspersoft.studio.unit.height" value="pixel"/>
+				</reportElement>
+				<box>
+					<pen lineWidth="0.25" lineColor="#D2D2D2"/>
+				</box>
+				<textElement textAlignment="Center" verticalAlignment="Middle">
+					<font isBold="false"/>
+					<paragraph lineSpacing="1_1_2"/>
+				</textElement>
+				<textFieldExpression><![CDATA[$F{productCode}]]></textFieldExpression>
+			</textField>
+			<textField isBlankWhenNull="true">
+				<reportElement x="160" y="0" width="110" height="45" uuid="158b0d96-0c90-48a4-87de-36d2380266af">
+					<property name="com.jaspersoft.studio.unit.width" value="px"/>
+				</reportElement>
+				<box>
+					<pen lineWidth="0.25" lineColor="#D2D2D2"/>
+				</box>
+				<textElement textAlignment="Center" verticalAlignment="Middle">
+					<font isBold="false"/>
+					<paragraph lineSpacing="1_1_2"/>
+				</textElement>
+				<textFieldExpression><![CDATA[$F{productName}]]></textFieldExpression>
+			</textField>
+			<textField isBlankWhenNull="true">
+				<reportElement x="270" y="0" width="80" height="45" uuid="fd442db8-d9e9-4693-a7b4-e1d3fc0a2773">
+					<property name="com.jaspersoft.studio.unit.width" value="px"/>
+				</reportElement>
+				<box>
+					<pen lineWidth="0.25" lineColor="#D2D2D2"/>
+				</box>
+				<textElement textAlignment="Center" verticalAlignment="Middle">
+					<font isBold="false"/>
+					<paragraph lineSpacing="1_1_2"/>
+				</textElement>
+				<textFieldExpression><![CDATA[$F{productCategoryName}]]></textFieldExpression>
+			</textField>
+			<textField isBlankWhenNull="true">
+				<reportElement x="350" y="0" width="60" height="45" uuid="ab42938c-4f7b-46c9-bf11-f7b13edd26c9">
+					<property name="com.jaspersoft.studio.unit.width" value="px"/>
+				</reportElement>
+				<box>
+					<pen lineWidth="0.25" lineColor="#D2D2D2"/>
+				</box>
+				<textElement textAlignment="Center" verticalAlignment="Middle">
+					<font isBold="false"/>
+					<paragraph lineSpacing="1_1_2"/>
+				</textElement>
+				<textFieldExpression><![CDATA[$F{openingStock}]]></textFieldExpression>
+			</textField>
+			<textField isBlankWhenNull="true">
+				<reportElement x="410" y="0" width="60" height="45" uuid="ab42938c-4f7b-46c9-bf11-f7b13edd26c9">
+					<property name="com.jaspersoft.studio.unit.width" value="px"/>
+				</reportElement>
+				<box>
+					<pen lineWidth="0.25" lineColor="#D2D2D2"/>
+				</box>
+				<textElement textAlignment="Center" verticalAlignment="Middle">
+					<font isBold="false"/>
+					<paragraph lineSpacing="1_1_2"/>
+				</textElement>
+				<textFieldExpression><![CDATA[$F{stockReceived}]]></textFieldExpression>
+			</textField>
+			<textField isBlankWhenNull="true">
+				<reportElement x="470" y="0" width="90" height="45" uuid="ab42938c-4f7b-46c9-bf11-f7b13edd26c9">
+					<property name="com.jaspersoft.studio.unit.width" value="px"/>
+				</reportElement>
+				<box>
+					<pen lineWidth="0.25" lineColor="#D2D2D2"/>
+				</box>
+				<textElement textAlignment="Center" verticalAlignment="Middle">
+					<font isBold="false"/>
+					<paragraph lineSpacing="1_1_2"/>
+				</textElement>
+				<textFieldExpression><![CDATA[$F{reasonName}]]></textFieldExpression>
+			</textField>
+			<textField isBlankWhenNull="true">
+				<reportElement x="560" y="0" width="60" height="45" uuid="ab42938c-4f7b-46c9-bf11-f7b13edd26c9">
+					<property name="com.jaspersoft.studio.unit.width" value="px"/>
+				</reportElement>
+				<box>
+					<pen lineWidth="0.25" lineColor="#D2D2D2"/>
+				</box>
+				<textElement textAlignment="Center" verticalAlignment="Middle">
+					<font isBold="false"/>
+					<paragraph lineSpacing="1_1_2"/>
+				</textElement>
+				<textFieldExpression><![CDATA[$F{issuedQuantity}]]></textFieldExpression>
+			</textField>
+			<textField isBlankWhenNull="true">
+				<reportElement x="620" y="0" width="60" height="45" uuid="ab42938c-4f7b-46c9-bf11-f7b13edd26c9">
+					<property name="com.jaspersoft.studio.unit.width" value="px"/>
+				</reportElement>
+				<box>
+					<pen lineWidth="0.25" lineColor="#D2D2D2"/>
+				</box>
+				<textElement textAlignment="Center" verticalAlignment="Middle">
+					<font isBold="false"/>
+					<paragraph lineSpacing="1_1_2"/>
+				</textElement>
+				<textFieldExpression><![CDATA[$F{adjustment}]]></textFieldExpression>
+			</textField>
+			<textField isBlankWhenNull="true">
+				<reportElement x="680" y="0" width="60" height="45" uuid="ab42938c-4f7b-46c9-bf11-f7b13edd26c9">
+					<property name="com.jaspersoft.studio.unit.width" value="px"/>
+				</reportElement>
+				<box>
+					<pen lineWidth="0.25" lineColor="#D2D2D2"/>
+				</box>
+				<textElement textAlignment="Center" verticalAlignment="Middle">
+					<font isBold="false"/>
+					<paragraph lineSpacing="1_1_2"/>
+				</textElement>
+				<textFieldExpression><![CDATA[$F{stockOnHand}]]></textFieldExpression>
+			</textField>
+			<textField isBlankWhenNull="true">
+				<reportElement x="740" y="0" width="60" height="45" uuid="ab42938c-4f7b-46c9-bf11-f7b13edd26c9">
+					<property name="com.jaspersoft.studio.unit.width" value="px"/>
+				</reportElement>
+				<box>
+					<pen lineWidth="0.25" lineColor="#D2D2D2"/>
+				</box>
+				<textElement textAlignment="Center" verticalAlignment="Middle">
+					<font isBold="false"/>
+					<paragraph lineSpacing="1_1_2"/>
+				</textElement>
+				<textFieldExpression><![CDATA[$F{averageMonthlyConsumption}]]></textFieldExpression>
+			</textField>
+		</band>
+	</detail>
+	<pageFooter>
+		<band height="40">
+			<textField evaluationTime="Master">
+				<reportElement x="640" y="5" width="161" height="30" uuid="f1db7f67-876a-48ce-a6d2-2fdf4b475085">
+					<property name="com.jaspersoft.studio.unit.y" value="px"/>
+				</reportElement>
+				<textElement textAlignment="Right" verticalAlignment="Top"/>
+				<textFieldExpression><![CDATA[$R{report.controls.page} + $V{MASTER_CURRENT_PAGE} + " " + $R{report.controls.pageOf} + $V{MASTER_TOTAL_PAGES}]]></textFieldExpression>
+			</textField>
+		</band>
+	</pageFooter>
+	<summary>
+		<band height="52">
+			<textField>
+				<reportElement positionType="FixRelativeToBottom" x="0" y="0" width="800" height="51" uuid="4924999e-3ae8-4199-b874-b6b5ae838170">
+					<printWhenExpression><![CDATA[new Boolean($V{REPORT_COUNT}.intValue()==0) || (new Boolean($V{REPORT_COUNT}.intValue()==1) && $F{productCode} == null)]]></printWhenExpression>
+				</reportElement>
+				<textElement textAlignment="Center" verticalAlignment="Middle">
+					<font size="12" isBold="true"/>
+				</textElement>
+				<textFieldExpression><![CDATA[$R{report.footer.noDataForParameters}]]></textFieldExpression>
+			</textField>
+		</band>
+	</summary>
+</jasperReport>
