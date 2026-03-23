@@ -95,14 +95,14 @@
       products.id = orderable_identifiers.orderableid
       AND products.versionnumber = orderable_identifiers.orderableversionnumber
   	WHERE
-      (facilities.name = $P{facility} OR $P{facility} IS NULL)
-      AND (facilities_types.name = $P{facilityType} OR $P{facilityType} IS NULL)
-      AND (zones.id IN (SELECT id FROM findChildZones) OR $P{geographicZone} IS NULL)
-      AND (products.fullproductname = $P{product} OR $P{product} IS NULL)
-      AND (programs.name = $P{program} OR $P{program} IS NULL)
+      (facilities.name = $P{facility}::varchar OR $P{facility}::varchar IS NULL)
+      AND (facilities_types.name = $P{facilityType}::varchar OR $P{facilityType}::varchar IS NULL)
+      AND (zones.id IN (SELECT id FROM findChildZones) OR $P{geographicZone}::varchar IS NULL)
+      AND (products.fullproductname = $P{product}::varchar OR $P{product}::varchar IS NULL)
+      AND (programs.name = $P{program}::varchar OR $P{program}::varchar IS NULL)
       AND (
-        ($P{date} IS NOT NULL AND scli.occurreddate <= $P{date}::date)
-        OR $P{date} IS NULL
+        ($P{date}::date IS NOT NULL AND scli.occurreddate <= $P{date}::date)
+        OR $P{date}::date IS NULL
       )
       GROUP BY products.id, facilities.id
   ),

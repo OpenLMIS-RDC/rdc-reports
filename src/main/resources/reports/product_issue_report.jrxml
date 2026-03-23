@@ -70,7 +70,7 @@
       extradata
     FROM stockmanagement.stock_card_line_items
     WHERE
-      occurreddate BETWEEN $P{startDate}:: date AND $P{endDate}:: date
+      occurreddate BETWEEN $P{startDate}::date AND $P{endDate}::date
     ORDER BY
       stockcardid,
       occurreddate DESC
@@ -83,7 +83,7 @@
     FROM referencedata.right_assignments AS right_assignments
     WHERE
       right_assignments.rightname = 'STOCK_CARDS_VIEW'
-      AND right_assignments.userId = $P{userId}:: uuid
+      AND right_assignments.userId = $P{userId}::uuid
   ),
   main_query AS (
     SELECT
@@ -133,27 +133,27 @@
     LEFT JOIN referencedata.orderable_display_categories AS product_categories ON
       product_categories.id = program_orderables.orderabledisplaycategoryid
     WHERE
-      (facilities.name = $P{facility} OR $P{facility} IS NULL)
-      AND (products.fullproductname = $P{product} OR $P{product} IS NULL)
-      AND (programs.name = $P{program} OR $P{program} IS NULL)
+      (facilities.name = $P{facility}::varchar OR $P{facility}::varchar IS NULL)
+      AND (products.fullproductname = $P{product}::varchar OR $P{product}::varchar IS NULL)
+      AND (programs.name = $P{program}::varchar OR $P{program}::varchar IS NULL)
       AND (
         (
-          $P{startDate} IS NOT NULL
-          AND $P{endDate} IS NOT NULL
-          AND stock_card_line_items.occurreddate BETWEEN $P{startDate}:: date
-          AND $P{endDate}:: date
+          $P{startDate}::date IS NOT NULL
+          AND $P{endDate}::date IS NOT NULL
+          AND stock_card_line_items.occurreddate BETWEEN $P{startDate}::date
+          AND $P{endDate}::date
         )
         OR (
-          $P{startDate} IS NOT NULL
-          AND $P{endDate} IS NULL
-          AND stock_card_line_items.occurreddate >= $P{startDate}:: date
+          $P{startDate}::date IS NOT NULL
+          AND $P{endDate}::date IS NULL
+          AND stock_card_line_items.occurreddate >= $P{startDate}::date
         )
         OR (
-          $P{startDate} IS NULL
-          AND $P{endDate} IS NOT NULL
-          AND stock_card_line_items.occurreddate <= $P{endDate}:: date
+          $P{startDate}::date IS NULL
+          AND $P{endDate}::date IS NOT NULL
+          AND stock_card_line_items.occurreddate <= $P{endDate}::date
         )
-        OR ($P{startDate} IS NULL AND $P{endDate} IS NULL)
+        OR ($P{startDate}::date IS NULL AND $P{endDate}::date IS NULL)
       )
       AND stock_card_line_items_reasons.reasontype = 'DEBIT'
   	)
