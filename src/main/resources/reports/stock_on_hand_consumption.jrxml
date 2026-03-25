@@ -118,6 +118,7 @@
       SELECT csoh.stockonhand
       FROM stockmanagement.calculated_stocks_on_hand csoh
       WHERE csoh.stockcardid = sc.id
+        AND csoh.occurreddate < $P{date}::date
       ORDER BY csoh.occurreddate DESC
       LIMIT 1
     ) latest_soh ON TRUE
@@ -137,7 +138,7 @@
       FROM
         stockmanagement.calculated_stocks_on_hand
       WHERE
-        occurreddate::varchar <= $P{date}::varchar
+        occurreddate <= $P{date}::date
       GROUP BY
         stockcardid
     ) AS cs ON cs.stockcardid = soh.stockcardid AND cs.max_date = soh.occurreddate
@@ -171,14 +172,28 @@
     LEFT JOIN stockmanagement.physical_inventory_line_item_adjustments adjustments ON scli.id = adjustments.stockcardlineitemid
     LEFT JOIN stockmanagement.stock_card_line_item_reasons sclir
       ON scli.reasonid = sclir.id OR adjustments.reasonid = sclir.id
+    WHERE
+      scli.occurreddate = $P{date}::date
     GROUP BY sc.orderableid, sc.facilityid
+  ),
+  amc_data AS (
+  	SELECT
+      rli.orderableid AS productid,
+      r.facilityid AS facilityid,
+      ROUND(AVG(rli.adjustedconsumption)::numeric, 2) AS amc
+    FROM requisition.requisitions AS r
+    JOIN requisition.requisition_line_items rli ON r.id = rli.requisitionid
+    JOIN products_allowed pa ON rli.orderableid = pa.productid
+      AND r.facilityid = pa.facilityid
+    WHERE r.status IN ('APPROVED', 'RELEASED')
+      AND r.modifieddate >= ($P{date}::date - INTERVAL '3 months')
+    GROUP BY r.facilityid, rli.orderableid
   )
   select
   	products.code AS productCode,
   	products.fullproductname AS productName,
   	product_categories.displayname AS productCategoryName,
   	facilities.name AS facilityName,
-  	0 AS reasonName,
   	COALESCE(osd.opening_stock, 0) AS openingStock,
   	COALESCE(cdd.quantity_received, 0) AS stockReceived,
   	COALESCE(cdd.quantity_issued, 0) AS issuedQuantity,
@@ -186,7 +201,7 @@
   	  + COALESCE(cdd.quantity_physical_inventory_adjusted_credit, 0) - COALESCE(cdd.quantity_physical_inventory_adjusted_debit, 0)
   	  AS adjustment,
   	COALESCE(soh.stockonhand, 0) AS stockOnHand,
-  	0 AS averageMonthlyConsumption
+  	COALESCE(amc.amc, 0) AS averageMonthlyConsumption
   FROM referencedata.orderables AS products
   JOIN products_allowed AS pa ON products.id = pa.productid
       AND products.versionnumber = pa.productversionnumber
@@ -196,6 +211,8 @@
     ON products.id = cdd.productid AND pa.facilityid = cdd.facilityid
   LEFT JOIN soh_data AS soh
     ON products.id = soh.productid AND pa.facilityid = soh.facilityid
+  LEFT JOIN amc_data AS amc
+    ON products.id = amc.productid AND pa.facilityid = amc.facilityid
   LEFT JOIN referencedata.facilities AS facilities ON facilities.id = pa.facilityid
   LEFT JOIN referencedata.program_orderables AS program_orderables ON
     program_orderables.orderableid = products.id
@@ -210,7 +227,6 @@
 	<field name="productCategoryName" class="java.lang.String"/>
 	<field name="openingStock" class="java.lang.String"/>
 	<field name="stockReceived" class="java.lang.String"/>
-	<field name="reasonName" class="java.lang.String"/>
 	<field name="issuedQuantity" class="java.lang.String"/>
 	<field name="adjustment" class="java.lang.String"/>
 	<field name="stockOnHand" class="java.lang.String"/>
@@ -313,9 +329,7 @@
 				</graphicElement>
 			</rectangle>
 			<textField isStretchWithOverflow="true">
-				<reportElement stretchType="RelativeToBandHeight" x="0" y="0" width="80" height="40" uuid="d6aeff36-c462-4fcd-9b56-19d439c2a1d3">
-					<property name="com.jaspersoft.studio.unit.width" value="px"/>
-				</reportElement>
+				<reportElement stretchType="RelativeToBandHeight" x="0" y="0" width="110" height="40" uuid="d6aeff36-c462-4fcd-9b56-19d439c2a1d3"/>
 				<box topPadding="1" leftPadding="1" bottomPadding="1" rightPadding="1">
 					<pen lineWidth="1.0" lineColor="#80C7E8"/>
 					<topPen lineWidth="0.0" lineStyle="Solid" lineColor="#000000"/>
@@ -329,9 +343,7 @@
 				<textFieldExpression><![CDATA[$R{report.column.facility}]]></textFieldExpression>
 			</textField>
 			<textField isStretchWithOverflow="true">
-				<reportElement stretchType="RelativeToBandHeight" x="80" y="0" width="80" height="40" uuid="d6aeff36-c462-4fcd-9b56-19d439c2a1d3">
-					<property name="com.jaspersoft.studio.unit.width" value="px"/>
-				</reportElement>
+				<reportElement stretchType="RelativeToBandHeight" x="110" y="0" width="90" height="40" uuid="d6aeff36-c462-4fcd-9b56-19d439c2a1d3"/>
 				<box topPadding="1" leftPadding="1" bottomPadding="1" rightPadding="1">
 					<pen lineWidth="1.0" lineColor="#80C7E8"/>
 					<topPen lineWidth="0.0" lineStyle="Solid" lineColor="#000000"/>
@@ -345,7 +357,7 @@
 				<textFieldExpression><![CDATA[$R{report.column.productCode}]]></textFieldExpression>
 			</textField>
 			<textField isStretchWithOverflow="true">
-				<reportElement stretchType="RelativeToBandHeight" x="160" y="0" width="110" height="40" uuid="03e904f1-b042-46fc-b9dc-8df07c88dc7e">
+				<reportElement stretchType="RelativeToBandHeight" x="200" y="0" width="140" height="40" uuid="03e904f1-b042-46fc-b9dc-8df07c88dc7e">
 					<property name="com.jaspersoft.studio.unit.width" value="px"/>
 				</reportElement>
 				<box topPadding="1" leftPadding="1" bottomPadding="1" rightPadding="1">
@@ -361,9 +373,7 @@
 				<textFieldExpression><![CDATA[$R{report.column.productName}]]></textFieldExpression>
 			</textField>
 			<textField isStretchWithOverflow="true">
-				<reportElement stretchType="RelativeToBandHeight" x="270" y="0" width="80" height="40" uuid="60ff0094-adb4-44c7-b2d1-c3eae0a11aa6">
-					<property name="com.jaspersoft.studio.unit.width" value="px"/>
-				</reportElement>
+				<reportElement stretchType="RelativeToBandHeight" x="340" y="0" width="100" height="40" uuid="60ff0094-adb4-44c7-b2d1-c3eae0a11aa6"/>
 				<box topPadding="1" leftPadding="1" bottomPadding="1" rightPadding="1">
 					<pen lineWidth="1.0" lineColor="#80C7E8"/>
 					<topPen lineWidth="0.0" lineStyle="Solid" lineColor="#000000"/>
@@ -377,7 +387,7 @@
 				<textFieldExpression><![CDATA[$R{report.column.productCategory}]]></textFieldExpression>
 			</textField>
 			<textField isStretchWithOverflow="true">
-				<reportElement stretchType="RelativeToBandHeight" x="350" y="0" width="60" height="40" uuid="e8d1da5c-0be4-4e92-971f-951aefa16f30">
+				<reportElement stretchType="RelativeToBandHeight" x="440" y="0" width="60" height="40" uuid="e8d1da5c-0be4-4e92-971f-951aefa16f30">
 					<property name="com.jaspersoft.studio.unit.width" value="px"/>
 				</reportElement>
 				<box topPadding="1" leftPadding="1" bottomPadding="1" rightPadding="1">
@@ -393,7 +403,7 @@
 				<textFieldExpression><![CDATA[$R{report.column.openingStock}]]></textFieldExpression>
 			</textField>
 			<textField isStretchWithOverflow="true">
-				<reportElement stretchType="RelativeToBandHeight" x="410" y="0" width="60" height="40" uuid="a20895bc-59a8-4277-9b73-b59218d1eaa2"/>
+				<reportElement stretchType="RelativeToBandHeight" x="500" y="0" width="60" height="40" uuid="a20895bc-59a8-4277-9b73-b59218d1eaa2"/>
 				<box topPadding="1" leftPadding="1" bottomPadding="1" rightPadding="1">
 					<pen lineWidth="1.0" lineColor="#80C7E8"/>
 					<topPen lineWidth="0.0" lineStyle="Solid" lineColor="#000000"/>
@@ -405,22 +415,6 @@
 					<font fontName="DejaVu Sans" isBold="true"/>
 				</textElement>
 				<textFieldExpression><![CDATA[$R{report.column.stockReceived}]]></textFieldExpression>
-			</textField>
-			<textField isStretchWithOverflow="true">
-				<reportElement stretchType="RelativeToBandHeight" x="470" y="0" width="90" height="40" uuid="58d78ee4-5862-4a72-8f1d-b7cc9f8e19f0">
-					<property name="com.jaspersoft.studio.unit.width" value="px"/>
-				</reportElement>
-				<box topPadding="1" leftPadding="1" bottomPadding="1" rightPadding="1">
-					<pen lineWidth="1.0" lineColor="#80C7E8"/>
-					<topPen lineWidth="0.0" lineStyle="Solid" lineColor="#000000"/>
-					<leftPen lineWidth="0.0" lineStyle="Solid" lineColor="#000000"/>
-					<bottomPen lineWidth="0.0" lineStyle="Solid" lineColor="#000000"/>
-					<rightPen lineWidth="0.0" lineStyle="Solid" lineColor="#000000"/>
-				</box>
-				<textElement textAlignment="Center" verticalAlignment="Middle">
-					<font fontName="DejaVu Sans" isBold="true"/>
-				</textElement>
-				<textFieldExpression><![CDATA[$R{report.column.reason}]]></textFieldExpression>
 			</textField>
 			<textField isStretchWithOverflow="true">
 				<reportElement stretchType="RelativeToBandHeight" x="560" y="0" width="60" height="40" uuid="0d0c5ae9-aa48-4ecd-b0e9-e2a9f824c218"/>
@@ -491,7 +485,7 @@
 				</graphicElement>
 			</rectangle>
 			<textField isBlankWhenNull="true">
-				<reportElement x="0" y="0" width="80" height="45" uuid="22c747ca-ce9b-42ff-883b-ba6d9bcce6c2">
+				<reportElement x="0" y="0" width="110" height="45" uuid="22c747ca-ce9b-42ff-883b-ba6d9bcce6c2">
 					<property name="com.jaspersoft.studio.unit.width" value="px"/>
 					<property name="com.jaspersoft.studio.unit.height" value="pixel"/>
 				</reportElement>
@@ -505,7 +499,7 @@
 				<textFieldExpression><![CDATA[$F{facilityName}]]></textFieldExpression>
 			</textField>
 			<textField isBlankWhenNull="true">
-				<reportElement x="80" y="0" width="80" height="45" uuid="22c747ca-ce9b-42ff-883b-ba6d9bcce6c2">
+				<reportElement x="110" y="0" width="90" height="45" uuid="22c747ca-ce9b-42ff-883b-ba6d9bcce6c2">
 					<property name="com.jaspersoft.studio.unit.width" value="px"/>
 					<property name="com.jaspersoft.studio.unit.height" value="pixel"/>
 				</reportElement>
@@ -519,7 +513,7 @@
 				<textFieldExpression><![CDATA[$F{productCode}]]></textFieldExpression>
 			</textField>
 			<textField isBlankWhenNull="true">
-				<reportElement x="160" y="0" width="110" height="45" uuid="158b0d96-0c90-48a4-87de-36d2380266af">
+				<reportElement x="200" y="0" width="140" height="45" uuid="158b0d96-0c90-48a4-87de-36d2380266af">
 					<property name="com.jaspersoft.studio.unit.width" value="px"/>
 				</reportElement>
 				<box>
@@ -532,7 +526,7 @@
 				<textFieldExpression><![CDATA[$F{productName}]]></textFieldExpression>
 			</textField>
 			<textField isBlankWhenNull="true">
-				<reportElement x="270" y="0" width="80" height="45" uuid="fd442db8-d9e9-4693-a7b4-e1d3fc0a2773">
+				<reportElement x="340" y="0" width="100" height="45" uuid="fd442db8-d9e9-4693-a7b4-e1d3fc0a2773">
 					<property name="com.jaspersoft.studio.unit.width" value="px"/>
 				</reportElement>
 				<box>
@@ -545,7 +539,7 @@
 				<textFieldExpression><![CDATA[$F{productCategoryName}]]></textFieldExpression>
 			</textField>
 			<textField isBlankWhenNull="true">
-				<reportElement x="350" y="0" width="60" height="45" uuid="ab42938c-4f7b-46c9-bf11-f7b13edd26c9">
+				<reportElement x="440" y="0" width="60" height="45" uuid="ab42938c-4f7b-46c9-bf11-f7b13edd26c9">
 					<property name="com.jaspersoft.studio.unit.width" value="px"/>
 				</reportElement>
 				<box>
@@ -558,7 +552,7 @@
 				<textFieldExpression><![CDATA[$F{openingStock}]]></textFieldExpression>
 			</textField>
 			<textField isBlankWhenNull="true">
-				<reportElement x="410" y="0" width="60" height="45" uuid="ab42938c-4f7b-46c9-bf11-f7b13edd26c9">
+				<reportElement x="500" y="0" width="60" height="45" uuid="ab42938c-4f7b-46c9-bf11-f7b13edd26c9">
 					<property name="com.jaspersoft.studio.unit.width" value="px"/>
 				</reportElement>
 				<box>
@@ -569,19 +563,6 @@
 					<paragraph lineSpacing="1_1_2"/>
 				</textElement>
 				<textFieldExpression><![CDATA[$F{stockReceived}]]></textFieldExpression>
-			</textField>
-			<textField isBlankWhenNull="true">
-				<reportElement x="470" y="0" width="90" height="45" uuid="ab42938c-4f7b-46c9-bf11-f7b13edd26c9">
-					<property name="com.jaspersoft.studio.unit.width" value="px"/>
-				</reportElement>
-				<box>
-					<pen lineWidth="0.25" lineColor="#D2D2D2"/>
-				</box>
-				<textElement textAlignment="Center" verticalAlignment="Middle">
-					<font isBold="false"/>
-					<paragraph lineSpacing="1_1_2"/>
-				</textElement>
-				<textFieldExpression><![CDATA[$F{reasonName}]]></textFieldExpression>
 			</textField>
 			<textField isBlankWhenNull="true">
 				<reportElement x="560" y="0" width="60" height="45" uuid="ab42938c-4f7b-46c9-bf11-f7b13edd26c9">
