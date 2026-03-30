@@ -58,31 +58,32 @@
 	</parameter>
 	<parameter name="headerTemplate" class="net.sf.jasperreports.engine.JasperReport" isForPrompting="false"/>
 	<queryString>
-		<![CDATA[with
-  RECURSIVE findChildZones AS (
+		<![CDATA[
+WITH
+RECURSIVE findChildZones AS (
     SELECT * FROM referencedata.geographic_zones WHERE name = $P{geographicZone}::varchar
     UNION ALL
     SELECT referencedata.geographic_zones.* FROM referencedata.geographic_zones
     JOIN findChildZones ON findChildZones.id = referencedata.geographic_zones.parentId
-  ),
-  latest_orderable_identifiers AS (
+),
+latest_orderable_identifiers AS (
     SELECT DISTINCT ON (orderableid)
-      orderableid, value, orderableversionnumber
+        orderableid, value, orderableversionnumber
     FROM referencedata.orderable_identifiers
     WHERE "key" = 'tradeItem'
     ORDER BY orderableid, orderableversionnumber DESC
-  ),
-  user_rights AS (
+),
+user_rights AS (
     SELECT facilityid, programid, userid
     FROM referencedata.right_assignments ra
     WHERE ra.rightname = 'STOCK_CARDS_VIEW' AND ra.userId = $P{userId}::uuid
-  ),
-  products_allowed AS (
-  	SELECT
-  		DISTINCT(products.id) AS productid,
-  		MAX(products.versionnumber) AS productversionnumber,
-  		facilities.id AS facilityid
-  	FROM referencedata.orderables AS products
+),
+products_allowed AS (
+    SELECT
+        DISTINCT(products.id) AS productid,
+        MAX(products.versionnumber) AS productversionnumber,
+        facilities.id AS facilityid
+    FROM referencedata.orderables AS products
     JOIN stockmanagement.stock_cards AS sc ON products.id = sc.orderableid
     JOIN stockmanagement.stock_card_line_items AS scli ON sc.id = scli.stockcardid
     JOIN referencedata.facilities AS facilities ON facilities.id = sc.facilityid
@@ -90,136 +91,176 @@
     JOIN referencedata.geographic_zones AS zones ON zones.id = facilities.geographiczoneid
     JOIN referencedata.programs AS programs ON sc.programid = programs.id
     JOIN user_rights AS ur ON programs.id = ur.programid
-    	AND facilities.id = ur.facilityid
-	LEFT JOIN latest_orderable_identifiers AS orderable_identifiers ON
-      products.id = orderable_identifiers.orderableid
-      AND products.versionnumber = orderable_identifiers.orderableversionnumber
-  	WHERE
-      (facilities.name = $P{facility}::varchar OR $P{facility}::varchar IS NULL)
-      AND (facilities_types.name = $P{facilityType}::varchar OR $P{facilityType}::varchar IS NULL)
-      AND (zones.id IN (SELECT id FROM findChildZones) OR $P{geographicZone}::varchar IS NULL)
-      AND (products.fullproductname = $P{product}::varchar OR $P{product}::varchar IS NULL)
-      AND (programs.name = $P{program}::varchar OR $P{program}::varchar IS NULL)
-      AND (
-        ($P{date}::date IS NOT NULL AND scli.occurreddate <= $P{date}::date)
-        OR $P{date}::date IS NULL
-      )
-      GROUP BY products.id, facilities.id
-  ),
-  opening_stock_data AS (
-  	SELECT
-  	  sc.orderableid AS productid,
-  	  sc.facilityid AS facilityid,
-  	  SUM(latest_soh.stockonhand) AS opening_stock
-  	FROM stockmanagement.stock_cards sc
+        AND facilities.id = ur.facilityid
+    JOIN latest_orderable_identifiers AS orderable_identifiers ON
+        products.id = orderable_identifiers.orderableid
+        AND products.versionnumber = orderable_identifiers.orderableversionnumber
+    WHERE
+        (facilities.name = $P{facility}::varchar OR $P{facility}::varchar IS NULL)
+        AND (facilities_types.name = $P{facilityType}::varchar OR $P{facilityType}::varchar IS NULL)
+        AND (zones.id IN (SELECT id FROM findChildZones) OR $P{geographicZone}::varchar IS NULL)
+        AND (products.fullproductname = $P{product}::varchar OR $P{product}::varchar IS NULL)
+        AND (programs.name = $P{program}::varchar OR $P{program}::varchar IS NULL)
+        AND (
+            ($P{date}::date IS NOT NULL AND scli.occurreddate <= $P{date}::date)
+            OR $P{date}::date IS NULL
+        )
+    GROUP BY products.id, facilities.id
+),
+opening_stock_data AS (
+    SELECT
+        sc.orderableid AS productid,
+        sc.facilityid AS facilityid,
+        SUM(latest_soh.stockonhand) AS opening_stock
+    FROM stockmanagement.stock_cards sc
     JOIN products_allowed pa ON sc.orderableid = pa.productid
-      AND sc.facilityid = pa.facilityid
+        AND sc.facilityid = pa.facilityid
     JOIN LATERAL (
-      SELECT csoh.stockonhand
-      FROM stockmanagement.calculated_stocks_on_hand csoh
-      WHERE csoh.stockcardid = sc.id
-        AND csoh.occurreddate < $P{date}::date
-      ORDER BY csoh.occurreddate DESC
-      LIMIT 1
+        SELECT csoh.stockonhand
+        FROM stockmanagement.calculated_stocks_on_hand csoh
+        WHERE csoh.stockcardid = sc.id
+            AND csoh.occurreddate < $P{date}::date
+        ORDER BY csoh.occurreddate DESC
+        LIMIT 1
     ) latest_soh ON TRUE
     GROUP BY sc.orderableid, sc.facilityid
-  ),
-  soh_data AS (
-  	SELECT
-  	  products.id AS productid,
-  	  f.id AS facilityid,
-	  SUM(soh.stockonhand) AS stockonhand
-  	FROM stockmanagement.stock_cards AS stock_cards
+),
+soh_data AS (
+    SELECT
+        products.id AS productid,
+        f.id AS facilityid,
+        SUM(soh.stockonhand) AS stockonhand
+    FROM stockmanagement.stock_cards AS stock_cards
     JOIN stockmanagement.calculated_stocks_on_hand AS soh ON soh.stockcardid = stock_cards.id
     JOIN (
-      SELECT
-        stockcardid,
-        MAX(occurreddate) AS max_date
-      FROM
-        stockmanagement.calculated_stocks_on_hand
-      WHERE
-        occurreddate <= $P{date}::date
-      GROUP BY
-        stockcardid
+        SELECT
+            stockcardid,
+            MAX(occurreddate) AS max_date
+        FROM
+            stockmanagement.calculated_stocks_on_hand
+        WHERE
+            occurreddate <= $P{date}::date
+        GROUP BY
+            stockcardid
     ) AS cs ON cs.stockcardid = soh.stockcardid AND cs.max_date = soh.occurreddate
     JOIN referencedata.orderables products ON products.id = stock_cards.orderableid
     JOIN referencedata.facilities f ON stock_cards.facilityid = f.id
     JOIN products_allowed pa ON products.id = pa.productid
-      AND products.versionnumber = pa.productversionnumber
-      AND stock_cards.facilityid = pa.facilityid
+        AND products.versionnumber = pa.productversionnumber
+        AND stock_cards.facilityid = pa.facilityid
     GROUP BY products.id, f.id
-  ),
-  quantity_data AS (
-  	SELECT
-      sc.orderableid AS productid,
-      sc.facilityid AS facilityid,
-      SUM(scli.quantity) FILTER (WHERE scli.sourceid IS NOT NULL) AS quantity_received,
-      SUM(scli.quantity) FILTER (WHERE scli.destinationid IS NOT NULL) AS quantity_issued,
-      SUM(scli.quantity) FILTER (WHERE scli.reasonid IS NOT NULL
-        AND scli.sourceid IS NULL AND scli.destinationid IS null
-        AND sclir.reasontype = 'CREDIT') AS quantity_adjusted_credit,
-      SUM(scli.quantity) FILTER (WHERE scli.reasonid IS NOT NULL
-        AND scli.sourceid IS NULL AND scli.destinationid IS null
-        AND sclir.reasontype = 'DEBIT') AS quantity_adjusted_debit,
-      SUM(adjustments.quantity) FILTER (WHERE sclir.reasontype = 'CREDIT') AS quantity_physical_inventory_adjusted_credit,
-      SUM(adjustments.quantity) FILTER (WHERE sclir.reasontype = 'DEBIT') AS quantity_physical_inventory_adjusted_debit
+),
+quantity_data AS (
+    SELECT
+        sc.orderableid AS productid,
+        sc.facilityid AS facilityid,
+        SUM(scli.quantity) FILTER (WHERE scli.sourceid IS NOT NULL) AS quantity_received,
+        SUM(scli.quantity) FILTER (WHERE scli.destinationid IS NOT NULL) AS quantity_issued,
+        SUM(scli.quantity) FILTER (WHERE scli.reasonid IS NOT NULL
+            AND scli.sourceid IS NULL AND scli.destinationid IS null
+            AND sclir.reasontype = 'CREDIT') AS quantity_adjusted_credit,
+        SUM(scli.quantity) FILTER (WHERE scli.reasonid IS NOT NULL
+            AND scli.sourceid IS NULL AND scli.destinationid IS null
+            AND sclir.reasontype = 'DEBIT') AS quantity_adjusted_debit,
+        SUM(adjustments.quantity) FILTER (WHERE sclir.reasontype = 'CREDIT') AS quantity_physical_inventory_adjusted_credit,
+        SUM(adjustments.quantity) FILTER (WHERE sclir.reasontype = 'DEBIT') AS quantity_physical_inventory_adjusted_debit
     FROM stockmanagement.stock_card_line_items scli
     JOIN stockmanagement.stock_cards sc ON scli.stockcardid = sc.id
     JOIN referencedata.orderables products ON products.id = sc.orderableid
     JOIN products_allowed pa ON products.id = pa.productid
-      AND products.versionnumber = pa.productversionnumber
-      AND sc.facilityid = pa.facilityid
+        AND products.versionnumber = pa.productversionnumber
+        AND sc.facilityid = pa.facilityid
     LEFT JOIN stockmanagement.physical_inventory_line_item_adjustments adjustments ON scli.id = adjustments.stockcardlineitemid
     LEFT JOIN stockmanagement.stock_card_line_item_reasons sclir
-      ON scli.reasonid = sclir.id OR adjustments.reasonid = sclir.id
+        ON scli.reasonid = sclir.id OR adjustments.reasonid = sclir.id
     WHERE
-      scli.occurreddate = $P{date}::date
+        scli.occurreddate = $P{date}::date
     GROUP BY sc.orderableid, sc.facilityid
-  ),
-  amc_data AS (
-  	SELECT
-      rli.orderableid AS productid,
-      r.facilityid AS facilityid,
-      ROUND(AVG(rli.adjustedconsumption)::numeric, 2) AS amc
-    FROM requisition.requisitions AS r
-    JOIN requisition.requisition_line_items rli ON r.id = rli.requisitionid
-    JOIN products_allowed pa ON rli.orderableid = pa.productid
-      AND r.facilityid = pa.facilityid
-    WHERE r.status IN ('APPROVED', 'RELEASED')
-      AND r.modifieddate >= ($P{date}::date - INTERVAL '3 months')
-    GROUP BY r.facilityid, rli.orderableid
-  )
-  select
-  	products.code AS productCode,
-  	products.fullproductname AS productName,
-  	product_categories.displayname AS productCategoryName,
-  	facilities.name AS facilityName,
-  	COALESCE(osd.opening_stock, 0) AS openingStock,
-  	COALESCE(cdd.quantity_received, 0) AS stockReceived,
-  	COALESCE(cdd.quantity_issued, 0) AS issuedQuantity,
-  	COALESCE(cdd.quantity_adjusted_credit, 0) - COALESCE(cdd.quantity_adjusted_debit, 0)
-  	  + COALESCE(cdd.quantity_physical_inventory_adjusted_credit, 0) - COALESCE(cdd.quantity_physical_inventory_adjusted_debit, 0)
-  	  AS adjustment,
-  	COALESCE(soh.stockonhand, 0) AS stockOnHand,
-  	COALESCE(amc.amc, 0) AS averageMonthlyConsumption
-  FROM referencedata.orderables AS products
-  JOIN products_allowed AS pa ON products.id = pa.productid
-      AND products.versionnumber = pa.productversionnumber
-  LEFT JOIN opening_stock_data AS osd
+),
+amc_data AS (
+    WITH monthly_consumption AS (
+        SELECT
+            date_trunc('month', scli.occurreddate)::date AS month_date,
+            sc.orderableid AS productid,
+            sc.facilityid,
+            SUM(ABS(scli.quantity)) FILTER (
+                WHERE scli.destinationid IS NOT NULL OR sclir.reasontype = 'DEBIT'
+            ) AS consumption,
+            COUNT(DISTINCT scli.occurreddate::date) AS active_days
+        FROM stockmanagement.stock_card_line_items scli
+        JOIN stockmanagement.stock_cards sc ON scli.stockcardid = sc.id
+        JOIN products_allowed pa ON sc.orderableid = pa.productid
+            AND sc.facilityid = pa.facilityid
+        LEFT JOIN stockmanagement.stock_card_line_item_reasons sclir ON scli.reasonid = sclir.id
+        WHERE scli.occurreddate >= ($P{date}::date - INTERVAL '6 months')
+            AND scli.occurreddate < date_trunc('month', $P{date}::date)
+        GROUP BY date_trunc('month', scli.occurreddate)::date, sc.orderableid, sc.facilityid
+    ),
+    monthly_stockout_days AS (
+        SELECT
+            date_trunc('month', csoh.occurreddate)::date AS month_date,
+            sc.orderableid AS productid,
+            sc.facilityid,
+            COUNT(*) FILTER (WHERE csoh.stockonhand = 0) AS stockout_days
+        FROM stockmanagement.calculated_stocks_on_hand csoh
+        JOIN stockmanagement.stock_cards sc ON csoh.stockcardid = sc.id
+        JOIN products_allowed pa ON sc.orderableid = pa.productid
+            AND sc.facilityid = pa.facilityid
+        WHERE csoh.occurreddate >= ($P{date}::date - INTERVAL '6 months')
+            AND csoh.occurreddate < date_trunc('month', $P{date}::date)
+        GROUP BY date_trunc('month', csoh.occurreddate)::date, sc.orderableid, sc.facilityid
+    )
+    SELECT
+        mc.productid,
+        mc.facilityid,
+        ROUND(AVG(
+            CASE
+                WHEN mc.active_days > COALESCE(msd.stockout_days, 0) AND mc.active_days > 0
+                THEN (mc.consumption::numeric / (mc.active_days - COALESCE(msd.stockout_days, 0))) * mc.active_days
+                ELSE COALESCE(mc.consumption, 0)
+            END
+        ), 2) AS amc
+    FROM monthly_consumption mc
+    LEFT JOIN monthly_stockout_days msd
+        ON mc.month_date = msd.month_date
+        AND mc.productid = msd.productid
+        AND mc.facilityid = msd.facilityid
+    WHERE mc.month_date >= ($P{date}::date - INTERVAL '3 months')
+        AND mc.month_date < date_trunc('month', $P{date}::date)
+    GROUP BY mc.productid, mc.facilityid
+)
+SELECT
+    products.code AS productCode,
+    products.fullproductname AS productName,
+    product_categories.displayname AS productCategoryName,
+    facilities.name AS facilityName,
+    COALESCE(osd.opening_stock, 0) AS openingStock,
+    COALESCE(cdd.quantity_received, 0) AS stockReceived,
+    COALESCE(cdd.quantity_issued, 0) AS issuedQuantity,
+    COALESCE(cdd.quantity_adjusted_credit, 0) - COALESCE(cdd.quantity_adjusted_debit, 0)
+        + COALESCE(cdd.quantity_physical_inventory_adjusted_credit, 0) - COALESCE(cdd.quantity_physical_inventory_adjusted_debit, 0)
+        AS adjustment,
+    COALESCE(soh.stockonhand, 0) AS stockOnHand,
+    COALESCE(amc.amc, 0) AS averageMonthlyConsumption
+FROM referencedata.orderables AS products
+JOIN products_allowed AS pa ON products.id = pa.productid
+    AND products.versionnumber = pa.productversionnumber
+LEFT JOIN opening_stock_data AS osd
     ON products.id = osd.productid AND pa.facilityid = osd.facilityid
-  LEFT JOIN quantity_data AS cdd
+LEFT JOIN quantity_data AS cdd
     ON products.id = cdd.productid AND pa.facilityid = cdd.facilityid
-  LEFT JOIN soh_data AS soh
+LEFT JOIN soh_data AS soh
     ON products.id = soh.productid AND pa.facilityid = soh.facilityid
-  LEFT JOIN amc_data AS amc
+LEFT JOIN amc_data AS amc
     ON products.id = amc.productid AND pa.facilityid = amc.facilityid
-  LEFT JOIN referencedata.facilities AS facilities ON facilities.id = pa.facilityid
-  LEFT JOIN referencedata.program_orderables AS program_orderables ON
+LEFT JOIN referencedata.facilities AS facilities ON facilities.id = pa.facilityid
+LEFT JOIN referencedata.program_orderables AS program_orderables ON
     program_orderables.orderableid = products.id
     AND program_orderables.orderableversionnumber = products.versionnumber
-  LEFT JOIN referencedata.orderable_display_categories AS product_categories ON
+LEFT JOIN referencedata.orderable_display_categories AS product_categories ON
     product_categories.id = program_orderables.orderabledisplaycategoryid
-  ORDER BY facilities.name, products.code]]>
+ORDER BY facilities.name, products.code
+]]>
 	</queryString>
 	<field name="facilityName" class="java.lang.String"/>
 	<field name="productName" class="java.lang.String"/>

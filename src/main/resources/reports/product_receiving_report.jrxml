@@ -51,136 +51,118 @@
 	</parameter>
 	<parameter name="headerTemplate" class="net.sf.jasperreports.engine.JasperReport" isForPrompting="false"/>
 	<queryString>
-		<![CDATA[WITH
-  latest_orderable_identifiers AS (
+		<![CDATA[
+WITH
+latest_orderable_identifiers AS (
     SELECT DISTINCT ON (orderableid)
-      orderableid,
-      value,
-      orderableversionnumber
+        orderableid,
+        value,
+        orderableversionnumber
     FROM referencedata.orderable_identifiers
     WHERE
-      "key" = 'tradeItem'
+        "key" = 'tradeItem'
     ORDER BY
-      orderableid,
-      orderableversionnumber DESC
-  ),
-  vial_stage AS (
+        orderableid,
+        orderableversionnumber DESC
+),
+vial_stage AS (
     SELECT DISTINCT ON (stockcardid)
-      stockcardid,
-      extradata
+        stockcardid,
+        extradata
     FROM stockmanagement.stock_card_line_items
     WHERE
-      occurreddate BETWEEN $P{startDate}::date AND $P{endDate}::date
+        occurreddate BETWEEN $P{startDate}::date AND $P{endDate}::date
     ORDER BY
-      stockcardid,
-      occurreddate DESC
-  ),
-  user_rights AS (
+        stockcardid,
+        occurreddate DESC
+),
+user_rights AS (
     SELECT
-      facilityid,
-      programid,
-      userid
+        facilityid,
+        programid,
+        userid
     FROM referencedata.right_assignments AS right_assignments
     WHERE
-      right_assignments.rightname = 'STOCK_CARDS_VIEW'
-      AND right_assignments.userId = $P{userId}::uuid
-  ),
-  main_query AS (
-    SELECT
-      facilities.name AS facilityName,
-      products.fullproductname AS productName,
-      products.code AS productCode,
-      COALESCE(product_categories.displayname, 'NO_DATA') AS productCategoryName,
-      COALESCE(lots.lotcode, 'NO_LOT') AS productLotCode,
-      lots.expirationdate AS productExpiryDate,
-      lots.manufacturedate AS productManufactureDate,
-      stock_card_line_items.occurreddate AS occurredDate,
-      stock_card_line_items.quantity AS quantity,
-      products.netcontent AS netContent,
-      COALESCE(source_facilities.name, 'NO_DATA') AS sourceFacilityName,
-      stock_card_line_items.sourcefreetext AS sourceComments,
-      COALESCE(vial_stage.extradata ->> 'vvmStatus', 'NO_DATA') AS vialStage,
-      programs.name AS programName,
-      COALESCE(stock_card_line_items_reasons.name, 'NO_DATA') AS reasonName,
-      stock_card_line_items.reasonfreetext AS reasonComments
-    FROM stockmanagement.stock_card_line_items AS stock_card_line_items
-    JOIN stockmanagement.stock_cards AS stock_cards ON stock_cards.id =
-      stock_card_line_items.stockcardid
-    JOIN referencedata.facilities AS facilities ON facilities.id =
-      stock_cards.facilityid
-    JOIN referencedata.orderables AS products ON products.id =
-      stock_cards.orderableid
-    JOIN referencedata.programs AS programs ON stock_cards.programid =
-      programs.id
-    JOIN user_rights AS user_rights ON programs.id = user_rights.programid
+        right_assignments.rightname = 'STOCK_CARDS_VIEW'
+        AND right_assignments.userId = $P{userId}::uuid
+)
+SELECT
+    facilities.name AS facilityName,
+    products.fullproductname AS productName,
+    products.code AS productCode,
+    COALESCE(product_categories.displayname, 'NO_DATA') AS productCategoryName,
+    COALESCE(lots.lotcode, 'NO_LOT') AS productLotCode,
+    lots.expirationdate AS productExpiryDate,
+    lots.manufacturedate AS productManufactureDate,
+    stock_card_line_items.occurreddate AS occurredDate,
+    stock_card_line_items.quantity AS quantity,
+    products.netcontent AS netContent,
+    COALESCE(source_facilities.name, 'NO_DATA') AS sourceFacilityName,
+    stock_card_line_items.sourcefreetext AS sourceComments,
+    COALESCE(vial_stage.extradata ->> 'vvmStatus', 'NO_DATA') AS vialStage,
+    programs.name AS programName,
+    COALESCE(stock_card_line_items_reasons.name, 'NO_DATA') AS reasonName,
+    stock_card_line_items.reasonfreetext AS reasonComments
+FROM stockmanagement.stock_card_line_items AS stock_card_line_items
+JOIN stockmanagement.stock_cards AS stock_cards ON stock_cards.id =
+    stock_card_line_items.stockcardid
+JOIN referencedata.facilities AS facilities ON facilities.id =
+    stock_cards.facilityid
+JOIN referencedata.orderables AS products ON products.id =
+    stock_cards.orderableid
+JOIN latest_orderable_identifiers AS orderable_identifiers ON
+    products.id = orderable_identifiers.orderableid
+    AND products.versionnumber = orderable_identifiers.orderableversionnumber
+JOIN referencedata.programs AS programs ON stock_cards.programid =
+    programs.id
+JOIN user_rights AS user_rights ON programs.id = user_rights.programid
     AND facilities.id = user_rights.facilityid
-    LEFT JOIN referencedata.lots AS lots ON lots.id = stock_cards.lotid
-    LEFT JOIN latest_orderable_identifiers AS orderable_identifiers ON
-      products.id = orderable_identifiers.orderableid
-      AND products.versionnumber = orderable_identifiers.orderableversionnumber
-    LEFT JOIN vial_stage ON stock_cards.id = vial_stage.stockcardid
-    LEFT JOIN stockmanagement.stock_card_line_item_reasons AS
-      stock_card_line_items_reasons ON stock_card_line_items.reasonid =
-      stock_card_line_items_reasons.id
-    LEFT JOIN stockmanagement.nodes AS source_nodes ON
-      stock_card_line_items.sourceid = source_nodes.id
-    LEFT JOIN referencedata.facilities AS source_facilities ON
-      source_nodes.referenceid = source_facilities.id
-    LEFT JOIN referencedata.program_orderables AS program_orderables ON
-      program_orderables.orderableid = products.id
-      AND program_orderables.orderableversionnumber = products.versionnumber
-    LEFT JOIN referencedata.orderable_display_categories AS product_categories ON
-      product_categories.id = program_orderables.orderabledisplaycategoryid
-    WHERE
-      (facilities.name = $P{facility}::varchar OR $P{facility}::varchar IS NULL)
-      AND (products.fullproductname = $P{product}::varchar OR $P{product}::varchar IS NULL)
-      AND (programs.name = $P{program}::varchar OR $P{program}::varchar IS NULL)
-      AND (
+LEFT JOIN referencedata.lots AS lots ON lots.id = stock_cards.lotid
+LEFT JOIN vial_stage ON stock_cards.id = vial_stage.stockcardid
+LEFT JOIN stockmanagement.stock_card_line_item_reasons AS
+    stock_card_line_items_reasons ON stock_card_line_items.reasonid =
+    stock_card_line_items_reasons.id
+LEFT JOIN stockmanagement.nodes AS source_nodes ON
+    stock_card_line_items.sourceid = source_nodes.id
+LEFT JOIN referencedata.facilities AS source_facilities ON
+    source_nodes.referenceid = source_facilities.id
+LEFT JOIN referencedata.program_orderables AS program_orderables ON
+    program_orderables.orderableid = products.id
+    AND program_orderables.orderableversionnumber = products.versionnumber
+LEFT JOIN referencedata.orderable_display_categories AS product_categories ON
+    product_categories.id = program_orderables.orderabledisplaycategoryid
+WHERE
+    (facilities.name = $P{facility}::varchar OR $P{facility}::varchar IS NULL)
+    AND (products.fullproductname = $P{product}::varchar OR $P{product}::varchar IS NULL)
+    AND (programs.name = $P{program}::varchar OR $P{program}::varchar IS NULL)
+    AND (
         (
-          $P{startDate}::date IS NOT NULL
-          AND $P{endDate}::date IS NOT NULL
-          AND stock_card_line_items.occurreddate BETWEEN $P{startDate}::date
-          AND $P{endDate}::date
+            $P{startDate}::date IS NOT NULL
+            AND $P{endDate}::date IS NOT NULL
+            AND stock_card_line_items.occurreddate BETWEEN $P{startDate}::date
+            AND $P{endDate}::date
         )
         OR (
-          $P{startDate}::date IS NOT NULL
-          AND $P{endDate}::date IS NULL
-          AND stock_card_line_items.occurreddate >= $P{startDate}::date
+            $P{startDate}::date IS NOT NULL
+            AND $P{endDate}::date IS NULL
+            AND stock_card_line_items.occurreddate >= $P{startDate}::date
         )
         OR (
-          $P{startDate}::date IS NULL
-          AND $P{endDate}::date IS NOT NULL
-          AND stock_card_line_items.occurreddate <= $P{endDate}::date
+            $P{startDate}::date IS NULL
+            AND $P{endDate}::date IS NOT NULL
+            AND stock_card_line_items.occurreddate <= $P{endDate}::date
         )
         OR ($P{startDate}::date IS NULL AND $P{endDate}::date IS NULL)
-      )
-      AND stock_card_line_items_reasons.reasontype = 'CREDIT'
-  	)
-	SELECT
-	  facilityName,
-	  sourceFacilityName,
-	  productName,
-	  productCode,
-	  productCategoryName,
-	  productLotCode,
-	  productExpiryDate,
-	  productManufactureDate,
-	  occurredDate,
-	  quantity,
-	  netContent,
-	  sourceComments,
-	  vialStage,
-	  programName,
-	  reasonName,
-	  reasonComments
-	FROM main_query
-	ORDER BY
-	  occurredDate,
-	  facilityName,
-	  productName,
-	  productCode,
-	  productLotCode,
-	  reasonName;]]>
+    )
+    AND stock_card_line_items_reasons.reasontype = 'CREDIT'
+ORDER BY
+    occurredDate,
+    facilityName,
+    productName,
+    productCode,
+    productLotCode,
+    reasonName;
+]]>
 	</queryString>
 	<field name="facilityName" class="java.lang.String"/>
 	<field name="sourceFacilityName" class="java.lang.String"/>
