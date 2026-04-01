@@ -25,7 +25,6 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Optional;
 import java.util.UUID;
-
 import org.junit.Before;
 import org.junit.Test;
 import org.mockito.InjectMocks;
@@ -124,7 +123,14 @@ public class JasperTemplateControllerTest {
 
     MockHttpServletRequest request = new MockHttpServletRequest();
     ResponseEntity<byte[]> response = jasperTemplateController.generateReport(request,
-        jasperTemplate.getId(), "xlsx");
+        jasperTemplate.getId(), "xlsx", "en");
+    assertTrue(response.getHeaders().toString().contains("name.xlsx"));
+    assertTrue(response.getHeaders().toString().contains("Content-Type:\"application/"
+        + "vnd.openxmlformats-officedocument.spreadsheetml.sheet;charset=UTF-8\""));
+
+    request = new MockHttpServletRequest();
+    response = jasperTemplateController.generateReport(request,
+        jasperTemplate.getId(), "xlsx", null);
     assertTrue(response.getHeaders().toString().contains("name.xlsx"));
     assertTrue(response.getHeaders().toString().contains("Content-Type:\"application/"
         + "vnd.openxmlformats-officedocument.spreadsheetml.sheet;charset=UTF-8\""));
