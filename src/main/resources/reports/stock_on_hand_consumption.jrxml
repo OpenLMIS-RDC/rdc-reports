@@ -254,7 +254,11 @@ LEFT JOIN soh_data AS soh
 LEFT JOIN amc_data AS amc
     ON products.id = amc.productid AND pa.facilityid = amc.facilityid
 LEFT JOIN referencedata.facilities AS facilities ON facilities.id = pa.facilityid
-LEFT JOIN referencedata.program_orderables AS program_orderables ON
+LEFT JOIN (
+	SELECT DISTINCT ON (orderableid)
+		orderableid, orderableversionnumber, orderabledisplaycategoryid
+	FROM referencedata.program_orderables
+) AS program_orderables ON
     program_orderables.orderableid = products.id
     AND program_orderables.orderableversionnumber = products.versionnumber
 LEFT JOIN referencedata.orderable_display_categories AS product_categories ON
