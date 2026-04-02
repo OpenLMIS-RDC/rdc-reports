@@ -146,6 +146,7 @@ public class JasperTemplateServiceTest {
   private static final String PARAM_NAME = "name";
   private static final String IMAGE_NAME = "image";
   private static final String RESOURCE_BUNDLE_NAME = "report_translations";
+  private static final String RESOURCE_BUNDLE_CLASSPATH = "resourceBundles/report_translations";
   private static final String RESOURCE_BUNDLE_KEY = "resource_bundle_key";
   private static final String RESOURCE_BUNDLE_PATH = "/config/reports/resourceBundles";
   private static final String HEADER_PARAM_NAME = "headerTemplate";
@@ -832,7 +833,7 @@ public class JasperTemplateServiceTest {
     ResourceBundle fallbackBundle = mock(ResourceBundle.class);
 
     mockStatic(ResourceBundle.class);
-    when(ResourceBundle.getBundle(eq(RESOURCE_BUNDLE_NAME), any(Locale.class)))
+    when(ResourceBundle.getBundle(eq(RESOURCE_BUNDLE_CLASSPATH), any(Locale.class)))
         .thenReturn(fallbackBundle);
 
     Map<String, Object> result = jasperTemplateService
@@ -861,7 +862,7 @@ public class JasperTemplateServiceTest {
         .thenThrow(new MissingResourceException("Missing resource from config",
             "ResourceBundle", RESOURCE_BUNDLE_KEY));
 
-    when(ResourceBundle.getBundle(eq(RESOURCE_BUNDLE_NAME), any(Locale.class)))
+    when(ResourceBundle.getBundle(eq(RESOURCE_BUNDLE_CLASSPATH), any(Locale.class)))
         .thenReturn(fallbackBundle);
 
     Map<String, Object> result = jasperTemplateService
@@ -947,7 +948,7 @@ public class JasperTemplateServiceTest {
         .thenThrow(new MissingResourceException("Missing", RESOURCE_BUNDLE_NAME,
             RESOURCE_BUNDLE_KEY));
 
-    when(ResourceBundle.getBundle(eq(RESOURCE_BUNDLE_NAME), any(Locale.class)))
+    when(ResourceBundle.getBundle(eq(RESOURCE_BUNDLE_CLASSPATH), any(Locale.class)))
         .thenThrow(new MissingResourceException("Fallback missing", RESOURCE_BUNDLE_NAME,
             RESOURCE_BUNDLE_KEY));
 

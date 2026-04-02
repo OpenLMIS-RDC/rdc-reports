@@ -259,7 +259,7 @@ public class JasperTemplateService {
 
     // Fallback to the internal Classpath
     try {
-      return ResourceBundle.getBundle("report_translations", locale);
+      return ResourceBundle.getBundle("resourceBundles/report_translations", locale);
     } catch (MissingResourceException e) {
       return null;
     }
