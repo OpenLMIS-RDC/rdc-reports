@@ -1,0 +1,652 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- Created with Jaspersoft Studio version 6.21.5.final using JasperReports Library version 6.5.1  -->
+<jasperReport xmlns="http://jasperreports.sourceforge.net/jasperreports" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://jasperreports.sourceforge.net/jasperreports http://jasperreports.sourceforge.net/xsd/jasperreport.xsd" name="PeriodicStockOnHandSummary" pageWidth="842" pageHeight="595" orientation="Landscape" whenNoDataType="AllSectionsNoDetail" columnWidth="555" leftMargin="20" rightMargin="20" topMargin="20" bottomMargin="20" isFloatColumnFooter="true" resourceBundle="resourceBundles/report_translations" uuid="caa0ba4c-33e9-4f02-bd4b-5440eeadf3a9">
+	<property name="com.jaspersoft.studio.data.defaultdataadapter" value="One Empty Record"/>
+	<property name="net.sf.jasperreports.export.xlsx.exclude.origin.band.1" value="pageHeader"/>
+	<property name="net.sf.jasperreports.export.xlsx.exclude.origin.band.2" value="pageFooter"/>
+	<property name="net.sf.jasperreports.export.xlsx.exclude.origin.keep.first.band.1" value="columnHeader"/>
+	<property name="net.sf.jasperreports.export.xlsx.remove.empty.space.between.rows" value="true"/>
+	<property name="net.sf.jasperreports.export.xlsx.exclude.key.PaginationText"/>
+	<property name="net.sf.jasperreports.export.xls.exclude.origin.band.1" value="pageHeader"/>
+	<property name="net.sf.jasperreports.export.xls.exclude.origin.band.2" value="pageFooter"/>
+	<property name="net.sf.jasperreports.export.xls.exclude.origin.keep.first.band.1" value="columnHeader"/>
+	<property name="net.sf.jasperreports.export.xls.remove.empty.space.between.rows" value="true"/>
+	<property name="net.sf.jasperreports.export.xls.exclude.key.PaginationText"/>
+	<property name="net.sf.jasperreports.export.csv.exclude.origin.keep.first.band.1" value="columnHeader"/>
+	<property name="net.sf.jasperreports.export.csv.exclude.origin.band.1" value="pageHeader"/>
+	<property name="net.sf.jasperreports.export.csv.exclude.origin.band.2" value="pageFooter"/>
+	<property name="net.sf.jasperreports.export.csv.exclude.key.PaginationText"/>
+	<style name="BaseStyle" isDefault="true" fontName="DejaVu Sans" fontSize="10"/>
+	<parameter name="startDate" class="java.lang.String" nestedType="java.lang.String">
+		<property name="displayName" value="Start Date"/>
+		<property name="required" value="true"/>
+		<parameterDescription><![CDATA[datepickers]]></parameterDescription>
+	</parameter>
+	<parameter name="endDate" class="java.lang.String" nestedType="java.lang.String">
+		<property name="displayName" value="End Date"/>
+		<property name="required" value="true"/>
+		<parameterDescription><![CDATA[datepickers]]></parameterDescription>
+	</parameter>
+	<parameter name="facility" class="java.lang.String" nestedType="java.lang.String">
+		<property name="displayName" value="Facility"/>
+		<property name="selectExpression" value="/api/facilities"/>
+		<property name="selectProperty" value="name"/>
+		<property name="required" value="false"/>
+	</parameter>
+	<parameter name="program" class="java.lang.String" nestedType="java.lang.String">
+		<property name="displayName" value="Program"/>
+		<property name="selectExpression" value="/api/programs"/>
+		<property name="selectProperty" value="name"/>
+		<property name="required" value="false"/>
+	</parameter>
+	<parameter name="userId" class="java.lang.String" isForPrompting="false">
+		<property name="displayName" value="ID of the currently authenticated user - should not be in template parameters"/>
+		<property name="required" value="false"/>
+	</parameter>
+	<parameter name="headerTemplate" class="net.sf.jasperreports.engine.JasperReport" isForPrompting="false"/>
+	<queryString>
+		<![CDATA[WITH
+latest_orderable_identifiers AS (
+    SELECT DISTINCT ON (orderableid)
+        orderableid, value, orderableversionnumber
+    FROM referencedata.orderable_identifiers
+    WHERE "key" = 'tradeItem'
+    ORDER BY orderableid, orderableversionnumber DESC
+),
+user_rights AS (
+    SELECT facilityid, programid, userid
+    FROM referencedata.right_assignments ra
+    WHERE ra.rightname = 'STOCK_CARDS_VIEW' AND ra.userId = $P{userId}::uuid
+),
+products_allowed AS (
+    SELECT
+        DISTINCT(products.id) AS productid,
+        MAX(products.versionnumber) AS productversionnumber,
+        facilities.id AS facilityid
+    FROM referencedata.orderables AS products
+    JOIN stockmanagement.stock_cards AS sc ON products.id = sc.orderableid
+    JOIN stockmanagement.stock_card_line_items AS scli ON sc.id = scli.stockcardid
+    JOIN referencedata.facilities AS facilities ON facilities.id = sc.facilityid
+    JOIN referencedata.facility_types AS facilities_types ON facilities_types.id = facilities.typeid
+    JOIN referencedata.geographic_zones AS zones ON zones.id = facilities.geographiczoneid
+    JOIN referencedata.programs AS programs ON sc.programid = programs.id
+    JOIN user_rights AS ur ON programs.id = ur.programid
+        AND facilities.id = ur.facilityid
+    JOIN latest_orderable_identifiers AS orderable_identifiers ON
+        products.id = orderable_identifiers.orderableid
+        AND products.versionnumber = orderable_identifiers.orderableversionnumber
+    WHERE
+        (facilities.name = $P{facility}::varchar OR $P{facility}::varchar IS NULL)
+        AND (programs.name = $P{program}::varchar OR $P{program}::varchar IS NULL)
+        AND (
+            ($P{endDate}::date IS NOT NULL AND scli.occurreddate <= $P{endDate}::date)
+            OR $P{endDate}::date IS NULL
+        )
+    GROUP BY products.id, facilities.id
+),
+soh_data AS (
+    SELECT
+        products.id AS productid,
+        f.id AS facilityid,
+        SUM(soh.stockonhand) AS stockonhand
+    FROM stockmanagement.stock_cards AS stock_cards
+    JOIN stockmanagement.calculated_stocks_on_hand AS soh ON soh.stockcardid = stock_cards.id
+    JOIN (
+        SELECT
+            stockcardid,
+            MAX(occurreddate) AS max_date
+        FROM
+            stockmanagement.calculated_stocks_on_hand
+        WHERE
+            occurreddate <= $P{endDate}::date
+        GROUP BY
+            stockcardid
+    ) AS cs ON cs.stockcardid = soh.stockcardid AND cs.max_date = soh.occurreddate
+    JOIN referencedata.orderables products ON products.id = stock_cards.orderableid
+    JOIN referencedata.facilities f ON stock_cards.facilityid = f.id
+    JOIN products_allowed pa ON products.id = pa.productid
+        AND products.versionnumber = pa.productversionnumber
+        AND stock_cards.facilityid = pa.facilityid
+    GROUP BY products.id, f.id
+),
+stock_data AS (
+    SELECT
+        sc.orderableid AS productid,
+        sc.facilityid AS facilityid,
+        csoh.occurreddate AS occurreddate,
+        MIN(csoh.stockonhand)::integer AS stockonhand
+    FROM stockmanagement.calculated_stocks_on_hand csoh
+    INNER JOIN stockmanagement.stock_cards sc ON csoh.stockcardid = sc.id
+    JOIN products_allowed pa ON sc.orderableid = pa.productid
+        AND sc.facilityid = pa.facilityid
+    WHERE csoh.occurreddate <= $P{endDate}::date
+    GROUP BY sc.orderableid, sc.facilityid, csoh.occurreddate
+),
+stock_data_with_lag AS (
+    SELECT
+        productid,
+        facilityid,
+        occurreddate,
+        stockonhand,
+        LAG(stockonhand) OVER (
+            PARTITION BY productid, facilityid
+            ORDER BY occurreddate
+        ) AS prev_stockonhand,
+        LEAD(occurreddate) OVER (
+            PARTITION BY productid, facilityid
+            ORDER BY occurreddate
+        ) AS nextdate
+    FROM stock_data
+),
+last_before_period AS (
+    SELECT productid, facilityid, occurreddate AS last_date, stockonhand
+    FROM (
+        SELECT productid, facilityid, occurreddate, stockonhand,
+            ROW_NUMBER() OVER (PARTITION BY productid, facilityid ORDER BY occurreddate DESC) AS rn
+        FROM stock_data
+        WHERE occurreddate < $P{startDate}::date
+    ) ranked
+    WHERE rn = 1
+),
+first_in_period AS (
+    SELECT productid, facilityid, occurreddate AS first_date, stockonhand
+    FROM (
+        SELECT productid, facilityid, occurreddate, stockonhand,
+            ROW_NUMBER() OVER (PARTITION BY productid, facilityid ORDER BY occurreddate ASC) AS rn
+        FROM stock_data
+        WHERE occurreddate >= $P{startDate}::date
+    ) ranked
+    WHERE rn = 1
+),
+stockout_calc AS (
+    SELECT
+        pf.productid,
+        pf.facilityid,
+        lb.last_date AS last_before_date,
+        lb.stockonhand AS last_before_soh,
+        fp.first_date AS first_in_period_date,
+        fp.stockonhand AS first_in_period_soh
+    FROM products_allowed pf
+    LEFT JOIN last_before_period lb ON pf.productid = lb.productid AND pf.facilityid = lb.facilityid
+    LEFT JOIN first_in_period fp ON pf.productid = fp.productid AND pf.facilityid = fp.facilityid
+),
+stockout_case1 AS (
+    -- Case 1: Last record before period shows stock <= 0 -> count from period start
+    SELECT
+        productid,
+        facilityid,
+        CASE
+            WHEN first_in_period_date IS NOT NULL
+            THEN first_in_period_date - $P{startDate}::date
+            ELSE ($P{endDate}::date + 1) - $P{startDate}::date
+        END AS stockout_days
+    FROM stockout_calc
+    WHERE last_before_date IS NOT NULL
+        AND last_before_soh <= 0
+        AND (first_in_period_date IS NULL OR first_in_period_date > $P{startDate}::date)
+),
+stockout_case2 AS (
+    -- Case 2: Gap at start - only if there was NO prior stock data at all
+    -- If last stock before period existed and was > 0, assume stock continues (no stockout)
+    SELECT
+        productid,
+        facilityid,
+        first_in_period_date - $P{startDate}::date AS stockout_days
+    FROM stockout_calc
+    WHERE first_in_period_date IS NOT NULL
+        AND first_in_period_date > $P{startDate}::date
+        AND last_before_date IS NULL
+),
+stockout_case3 AS (
+    -- Case 3: Within-period stockouts (using LAG detection)
+    SELECT
+        productid,
+        facilityid,
+        SUM(
+            CASE WHEN (prev_stockonhand IS NULL OR prev_stockonhand > 0) AND stockonhand <= 0
+                THEN LEAST(COALESCE(nextdate, $P{endDate}::date + 1), $P{endDate}::date + 1) - GREATEST(occurreddate, $P{startDate}::date)
+                ELSE 0 END
+        ) AS stockout_days
+    FROM stock_data_with_lag
+    WHERE stockonhand <= 0
+        AND occurreddate >= $P{startDate}::date
+        AND occurreddate <= $P{endDate}::date
+    GROUP BY productid, facilityid
+),
+stockout_combined AS (
+    SELECT productid, facilityid, SUM(stockout_days) AS totalstockoutdays
+    FROM (
+        SELECT productid, facilityid, stockout_days FROM stockout_case1
+        UNION ALL
+        SELECT productid, facilityid, stockout_days FROM stockout_case2
+        UNION ALL
+        SELECT productid, facilityid, COALESCE(stockout_days, 0) FROM stockout_case3
+    ) combined
+    GROUP BY productid, facilityid
+),
+amc_data AS (
+    WITH monthly_consumption AS (
+        SELECT
+            date_trunc('month', scli.occurreddate)::date AS month_date,
+            sc.orderableid AS productid,
+            sc.facilityid,
+            SUM(ABS(scli.quantity)) FILTER (
+                WHERE scli.destinationid IS NOT NULL OR sclir.reasontype = 'DEBIT'
+            ) AS consumption,
+            COUNT(DISTINCT scli.occurreddate::date) AS active_days
+        FROM stockmanagement.stock_card_line_items scli
+        JOIN stockmanagement.stock_cards sc ON scli.stockcardid = sc.id
+        JOIN products_allowed pa ON sc.orderableid = pa.productid
+            AND sc.facilityid = pa.facilityid
+        LEFT JOIN stockmanagement.stock_card_line_item_reasons sclir ON scli.reasonid = sclir.id
+        WHERE scli.occurreddate >= ($P{endDate}::date - INTERVAL '3 months')
+            AND scli.occurreddate < date_trunc('month', $P{endDate}::date)
+        GROUP BY date_trunc('month', scli.occurreddate)::date, sc.orderableid, sc.facilityid
+    )
+    SELECT
+        mc.productid,
+        mc.facilityid,
+        ROUND(AVG(mc.consumption), 2) AS amc
+    FROM monthly_consumption mc
+    WHERE mc.month_date >= ($P{endDate}::date - INTERVAL '3 months')
+        AND mc.month_date < date_trunc('month', $P{endDate}::date)
+    GROUP BY mc.productid, mc.facilityid
+)
+SELECT
+    products.code AS productCode,
+    products.fullproductname AS productName,
+    product_categories.displayname AS productCategoryName,
+    facilities.name AS facilityName,
+    COALESCE(soh.stockonhand, 0) AS stockOnHand,
+    COALESCE(amc.amc, 0) AS averageMonthlyConsumption,
+    COALESCE(sa.totalstockoutdays, 0) AS stockoutDays,
+    CASE
+        WHEN amc.amc > 0 THEN ROUND(COALESCE(soh.stockonhand, 0)::numeric / amc.amc, 2)
+        ELSE 0
+    END AS monthOfStock
+FROM referencedata.orderables AS products
+JOIN products_allowed AS pa ON products.id = pa.productid
+    AND products.versionnumber = pa.productversionnumber
+LEFT JOIN soh_data AS soh
+    ON products.id = soh.productid AND pa.facilityid = soh.facilityid
+LEFT JOIN amc_data AS amc
+    ON products.id = amc.productid AND pa.facilityid = amc.facilityid
+LEFT JOIN stockout_combined AS sa
+    ON products.id = sa.productid AND pa.facilityid = sa.facilityid
+LEFT JOIN referencedata.facilities AS facilities ON facilities.id = pa.facilityid
+LEFT JOIN (
+    SELECT DISTINCT ON (orderableid)
+        orderableid, orderableversionnumber, orderabledisplaycategoryid
+    FROM referencedata.program_orderables
+) AS program_orderables ON
+    program_orderables.orderableid = products.id
+    AND program_orderables.orderableversionnumber = products.versionnumber
+LEFT JOIN referencedata.orderable_display_categories AS product_categories ON
+    product_categories.id = program_orderables.orderabledisplaycategoryid
+ORDER BY facilities.name, products.code]]>
+	</queryString>
+	<field name="facilityName" class="java.lang.String"/>
+	<field name="productName" class="java.lang.String"/>
+	<field name="productCode" class="java.lang.String"/>
+	<field name="productCategoryName" class="java.lang.String"/>
+	<field name="stockoutDays" class="java.lang.String"/>
+	<field name="stockOnHand" class="java.lang.String"/>
+	<field name="monthOfStock" class="java.lang.String"/>
+	<background>
+		<band splitType="Stretch"/>
+	</background>
+	<title>
+		<band height="92" splitType="Stretch">
+			<subreport overflowType="Stretch">
+				<reportElement positionType="Float" mode="Transparent" x="-22" y="0" width="842" height="90" isRemoveLineWhenBlank="true" isPrintWhenDetailOverflows="true" uuid="57924a28-dd0b-4ed5-8b5c-8867c356fb34">
+					<property name="com.jaspersoft.studio.unit.height" value="px"/>
+					<property name="com.jaspersoft.studio.unit.x" value="pixel"/>
+					<property name="com.jaspersoft.studio.unit.width" value="px"/>
+					<property name="com.jaspersoft.studio.unit.y" value="px"/>
+				</reportElement>
+				<parametersMapExpression><![CDATA[$P{REPORT_PARAMETERS_MAP}]]></parametersMapExpression>
+				<connectionExpression><![CDATA[$P{REPORT_CONNECTION}]]></connectionExpression>
+				<subreportExpression><![CDATA[$P{headerTemplate}]]></subreportExpression>
+			</subreport>
+		</band>
+	</title>
+	<pageHeader>
+		<band height="114" splitType="Stretch">
+			<printWhenExpression><![CDATA[new Boolean($V{PAGE_NUMBER}.intValue()==1)]]></printWhenExpression>
+			<rectangle>
+				<reportElement x="0" y="10" width="800" height="35" backcolor="#C0C0C0" uuid="1d9034c0-77df-4000-920e-06594b2ebeb6">
+					<property name="com.jaspersoft.studio.unit.height" value="px"/>
+				</reportElement>
+				<graphicElement>
+					<pen lineWidth="0.0"/>
+				</graphicElement>
+			</rectangle>
+			<textField>
+				<reportElement x="0" y="10" width="800" height="34" forecolor="#FFFFFF" uuid="0e3cc6fc-7fea-4050-a800-2f5beff70890"/>
+				<textElement textAlignment="Center" verticalAlignment="Middle">
+					<font size="24" isBold="true"/>
+				</textElement>
+				<textFieldExpression><![CDATA[$R{report.title.stockAvailability}]]></textFieldExpression>
+			</textField>
+			<textField>
+				<reportElement x="0" y="55" width="200" height="20" uuid="c99c8f1c-d3d3-4020-8541-2da7e1a48466">
+					<property name="com.jaspersoft.studio.unit.width" value="px"/>
+				</reportElement>
+				<textElement textAlignment="Left" verticalAlignment="Middle">
+					<font isBold="true"/>
+				</textElement>
+				<textFieldExpression><![CDATA[$R{report.header.facility}]]></textFieldExpression>
+			</textField>
+			<textField>
+				<reportElement x="200" y="55" width="200" height="20" uuid="dca5e26f-c56e-4405-b824-e7f5516e0a7e">
+					<property name="com.jaspersoft.studio.unit.width" value="px"/>
+				</reportElement>
+				<textElement textAlignment="Left" verticalAlignment="Middle">
+					<font size="10" isBold="true"/>
+				</textElement>
+				<textFieldExpression><![CDATA[$R{report.header.program}]]></textFieldExpression>
+			</textField>
+			<textField>
+				<reportElement x="400" y="55" width="130" height="20" uuid="48e7b132-74de-44e8-9a1f-5ab8e86adeb5">
+					<property name="com.jaspersoft.studio.unit.width" value="px"/>
+				</reportElement>
+				<textElement textAlignment="Left" verticalAlignment="Middle">
+					<font size="10" isBold="true"/>
+				</textElement>
+				<textFieldExpression><![CDATA[$R{report.header.startDate}]]></textFieldExpression>
+			</textField>
+			<textField>
+				<reportElement x="530" y="55" width="130" height="20" uuid="48e7b132-74de-44e8-9a1f-5ab8e86adeb5">
+					<property name="com.jaspersoft.studio.unit.width" value="px"/>
+				</reportElement>
+				<textElement textAlignment="Left" verticalAlignment="Middle">
+					<font size="10" isBold="true"/>
+				</textElement>
+				<textFieldExpression><![CDATA[$R{report.header.endDate}]]></textFieldExpression>
+			</textField>
+			<textField>
+				<reportElement key="" x="660" y="55" width="130" height="20" uuid="4b505859-702c-4523-b9ee-567234bef054">
+					<property name="com.jaspersoft.studio.unit.width" value="px"/>
+				</reportElement>
+				<textElement textAlignment="Left" verticalAlignment="Middle">
+					<font size="10" isBold="true"/>
+				</textElement>
+				<textFieldExpression><![CDATA[$R{report.header.reportDate}]]></textFieldExpression>
+			</textField>
+			<textField>
+				<reportElement x="0" y="80" width="200" height="20" uuid="a8565621-bd19-4b76-bd5e-280c405039c6">
+					<property name="com.jaspersoft.studio.unit.width" value="px"/>
+				</reportElement>
+				<textFieldExpression><![CDATA[$P{facility} != null ? $P{facility} : "All"]]></textFieldExpression>
+			</textField>
+			<textField>
+				<reportElement x="200" y="80" width="200" height="20" uuid="c88caf12-452e-4beb-846a-faadd85f251e">
+					<property name="com.jaspersoft.studio.unit.width" value="px"/>
+				</reportElement>
+				<textFieldExpression><![CDATA[$P{program} != null ? $P{program} : "All"]]></textFieldExpression>
+			</textField>
+			<textField>
+				<reportElement x="400" y="80" width="130" height="20" uuid="36f32e3f-b43e-458c-8724-9ea5571e0369">
+					<property name="com.jaspersoft.studio.unit.width" value="px"/>
+				</reportElement>
+				<textFieldExpression><![CDATA[$P{startDate}]]></textFieldExpression>
+			</textField>
+			<textField>
+				<reportElement x="530" y="80" width="130" height="20" uuid="36f32e3f-b43e-458c-8724-9ea5571e0369">
+					<property name="com.jaspersoft.studio.unit.width" value="px"/>
+				</reportElement>
+				<textFieldExpression><![CDATA[$P{endDate}]]></textFieldExpression>
+			</textField>
+			<textField pattern="MMM d, yyyy">
+				<reportElement x="660" y="80" width="130" height="20" uuid="1a79bec9-bcf9-40b7-9530-86290dcd415f">
+					<property name="com.jaspersoft.studio.unit.width" value="px"/>
+				</reportElement>
+				<textFieldExpression><![CDATA[new SimpleDateFormat("yyyy-MM-dd").format(new java.util.Date())]]></textFieldExpression>
+			</textField>
+		</band>
+	</pageHeader>
+	<columnHeader>
+		<band height="40" splitType="Stretch">
+			<property name="com.jaspersoft.studio.unit.height" value="px"/>
+			<rectangle>
+				<reportElement stretchType="RelativeToBandHeight" x="0" y="0" width="801" height="40" backcolor="#C0C0C0" uuid="5ef622da-a8e3-4110-ba9e-b2b9f14d8eaa">
+					<property name="com.jaspersoft.studio.unit.height" value="px"/>
+				</reportElement>
+				<graphicElement>
+					<pen lineWidth="0.0"/>
+				</graphicElement>
+			</rectangle>
+			<textField isStretchWithOverflow="true">
+				<reportElement stretchType="RelativeToBandHeight" x="0" y="0" width="160" height="40" uuid="d6aeff36-c462-4fcd-9b56-19d439c2a1d3"/>
+				<box topPadding="1" leftPadding="1" bottomPadding="1" rightPadding="1">
+					<pen lineWidth="1.0" lineColor="#80C7E8"/>
+					<topPen lineWidth="0.0" lineStyle="Solid" lineColor="#000000"/>
+					<leftPen lineWidth="0.0" lineStyle="Solid" lineColor="#000000"/>
+					<bottomPen lineWidth="0.0" lineStyle="Solid" lineColor="#000000"/>
+					<rightPen lineWidth="0.0" lineStyle="Solid" lineColor="#000000"/>
+				</box>
+				<textElement textAlignment="Center" verticalAlignment="Middle">
+					<font fontName="DejaVu Sans" isBold="true"/>
+				</textElement>
+				<textFieldExpression><![CDATA[$R{report.column.facility}]]></textFieldExpression>
+			</textField>
+			<textField isStretchWithOverflow="true">
+				<reportElement stretchType="RelativeToBandHeight" x="160" y="0" width="90" height="40" uuid="d6aeff36-c462-4fcd-9b56-19d439c2a1d3"/>
+				<box topPadding="1" leftPadding="1" bottomPadding="1" rightPadding="1">
+					<pen lineWidth="1.0" lineColor="#80C7E8"/>
+					<topPen lineWidth="0.0" lineStyle="Solid" lineColor="#000000"/>
+					<leftPen lineWidth="0.0" lineStyle="Solid" lineColor="#000000"/>
+					<bottomPen lineWidth="0.0" lineStyle="Solid" lineColor="#000000"/>
+					<rightPen lineWidth="0.0" lineStyle="Solid" lineColor="#000000"/>
+				</box>
+				<textElement textAlignment="Center" verticalAlignment="Middle">
+					<font fontName="DejaVu Sans" isBold="true"/>
+				</textElement>
+				<textFieldExpression><![CDATA[$R{report.column.productCode}]]></textFieldExpression>
+			</textField>
+			<textField isStretchWithOverflow="true">
+				<reportElement stretchType="RelativeToBandHeight" x="250" y="0" width="200" height="40" uuid="03e904f1-b042-46fc-b9dc-8df07c88dc7e">
+					<property name="com.jaspersoft.studio.unit.width" value="px"/>
+				</reportElement>
+				<box topPadding="1" leftPadding="1" bottomPadding="1" rightPadding="1">
+					<pen lineWidth="1.0" lineColor="#80C7E8"/>
+					<topPen lineWidth="0.0" lineStyle="Solid" lineColor="#000000"/>
+					<leftPen lineWidth="0.0" lineStyle="Solid" lineColor="#000000"/>
+					<bottomPen lineWidth="0.0" lineStyle="Solid" lineColor="#000000"/>
+					<rightPen lineWidth="0.0" lineStyle="Solid" lineColor="#000000"/>
+				</box>
+				<textElement textAlignment="Center" verticalAlignment="Middle">
+					<font fontName="DejaVu Sans" isBold="true"/>
+				</textElement>
+				<textFieldExpression><![CDATA[$R{report.column.productName}]]></textFieldExpression>
+			</textField>
+			<textField isStretchWithOverflow="true">
+				<reportElement stretchType="RelativeToBandHeight" x="450" y="0" width="110" height="40" uuid="60ff0094-adb4-44c7-b2d1-c3eae0a11aa6">
+					<property name="com.jaspersoft.studio.unit.width" value="px"/>
+				</reportElement>
+				<box topPadding="1" leftPadding="1" bottomPadding="1" rightPadding="1">
+					<pen lineWidth="1.0" lineColor="#80C7E8"/>
+					<topPen lineWidth="0.0" lineStyle="Solid" lineColor="#000000"/>
+					<leftPen lineWidth="0.0" lineStyle="Solid" lineColor="#000000"/>
+					<bottomPen lineWidth="0.0" lineStyle="Solid" lineColor="#000000"/>
+					<rightPen lineWidth="0.0" lineStyle="Solid" lineColor="#000000"/>
+				</box>
+				<textElement textAlignment="Center" verticalAlignment="Middle">
+					<font fontName="DejaVu Sans" isBold="true"/>
+				</textElement>
+				<textFieldExpression><![CDATA[$R{report.column.productCategory}]]></textFieldExpression>
+			</textField>
+			<textField isStretchWithOverflow="true">
+				<reportElement stretchType="RelativeToBandHeight" x="560" y="0" width="80" height="40" uuid="e8d1da5c-0be4-4e92-971f-951aefa16f30"/>
+				<box topPadding="1" leftPadding="1" bottomPadding="1" rightPadding="1">
+					<pen lineWidth="1.0" lineColor="#80C7E8"/>
+					<topPen lineWidth="0.0" lineStyle="Solid" lineColor="#000000"/>
+					<leftPen lineWidth="0.0" lineStyle="Solid" lineColor="#000000"/>
+					<bottomPen lineWidth="0.0" lineStyle="Solid" lineColor="#000000"/>
+					<rightPen lineWidth="0.0" lineStyle="Solid" lineColor="#000000"/>
+				</box>
+				<textElement textAlignment="Center" verticalAlignment="Middle">
+					<font fontName="DejaVu Sans" isBold="true"/>
+				</textElement>
+				<textFieldExpression><![CDATA[$R{report.column.numberOfStockoutDays}]]></textFieldExpression>
+			</textField>
+			<textField isStretchWithOverflow="true">
+				<reportElement stretchType="RelativeToBandHeight" x="640" y="0" width="80" height="40" uuid="a20895bc-59a8-4277-9b73-b59218d1eaa2">
+					<property name="com.jaspersoft.studio.unit.width" value="px"/>
+				</reportElement>
+				<box topPadding="1" leftPadding="1" bottomPadding="1" rightPadding="1">
+					<pen lineWidth="1.0" lineColor="#80C7E8"/>
+					<topPen lineWidth="0.0" lineStyle="Solid" lineColor="#000000"/>
+					<leftPen lineWidth="0.0" lineStyle="Solid" lineColor="#000000"/>
+					<bottomPen lineWidth="0.0" lineStyle="Solid" lineColor="#000000"/>
+					<rightPen lineWidth="0.0" lineStyle="Solid" lineColor="#000000"/>
+				</box>
+				<textElement textAlignment="Center" verticalAlignment="Middle">
+					<font fontName="DejaVu Sans" isBold="true"/>
+				</textElement>
+				<textFieldExpression><![CDATA[$R{report.column.stockOnHand}]]></textFieldExpression>
+			</textField>
+			<textField isStretchWithOverflow="true">
+				<reportElement stretchType="RelativeToBandHeight" x="720" y="0" width="80" height="40" uuid="0d0c5ae9-aa48-4ecd-b0e9-e2a9f824c218">
+					<property name="com.jaspersoft.studio.unit.width" value="px"/>
+				</reportElement>
+				<box topPadding="1" leftPadding="1" bottomPadding="1" rightPadding="1">
+					<pen lineWidth="1.0" lineColor="#80C7E8"/>
+					<topPen lineWidth="0.0" lineStyle="Solid" lineColor="#000000"/>
+					<leftPen lineWidth="0.0" lineStyle="Solid" lineColor="#000000"/>
+					<bottomPen lineWidth="0.0" lineStyle="Solid" lineColor="#000000"/>
+					<rightPen lineWidth="0.0" lineStyle="Solid" lineColor="#000000"/>
+				</box>
+				<textElement textAlignment="Center" verticalAlignment="Middle">
+					<font fontName="DejaVu Sans" isBold="true"/>
+				</textElement>
+				<textFieldExpression><![CDATA[$R{report.column.monthOfStock}]]></textFieldExpression>
+			</textField>
+		</band>
+	</columnHeader>
+	<detail>
+		<band height="45" splitType="Prevent">
+			<property name="com.jaspersoft.studio.unit.height" value="px"/>
+			<printWhenExpression><![CDATA[new Boolean($V{REPORT_COUNT}.intValue()!=0) && $F{productCode} != null]]></printWhenExpression>
+			<rectangle>
+				<reportElement stretchType="RelativeToBandHeight" x="0" y="0" width="801" height="45" backcolor="#F0F0F0" uuid="2de367b0-e3ff-42e2-b474-e9accdcd1c69"/>
+				<graphicElement>
+					<pen lineWidth="0.0"/>
+				</graphicElement>
+			</rectangle>
+			<textField isBlankWhenNull="true">
+				<reportElement x="0" y="0" width="160" height="45" uuid="22c747ca-ce9b-42ff-883b-ba6d9bcce6c2">
+					<property name="com.jaspersoft.studio.unit.width" value="px"/>
+					<property name="com.jaspersoft.studio.unit.height" value="pixel"/>
+				</reportElement>
+				<box>
+					<pen lineWidth="0.25" lineColor="#D2D2D2"/>
+				</box>
+				<textElement textAlignment="Center" verticalAlignment="Middle">
+					<font isBold="false"/>
+					<paragraph lineSpacing="1_1_2"/>
+				</textElement>
+				<textFieldExpression><![CDATA[$F{facilityName}]]></textFieldExpression>
+			</textField>
+			<textField isBlankWhenNull="true">
+				<reportElement x="160" y="0" width="90" height="45" uuid="22c747ca-ce9b-42ff-883b-ba6d9bcce6c2">
+					<property name="com.jaspersoft.studio.unit.width" value="px"/>
+					<property name="com.jaspersoft.studio.unit.height" value="pixel"/>
+				</reportElement>
+				<box>
+					<pen lineWidth="0.25" lineColor="#D2D2D2"/>
+				</box>
+				<textElement textAlignment="Center" verticalAlignment="Middle">
+					<font isBold="false"/>
+					<paragraph lineSpacing="1_1_2"/>
+				</textElement>
+				<textFieldExpression><![CDATA[$F{productCode}]]></textFieldExpression>
+			</textField>
+			<textField isBlankWhenNull="true">
+				<reportElement x="250" y="0" width="200" height="45" uuid="158b0d96-0c90-48a4-87de-36d2380266af">
+					<property name="com.jaspersoft.studio.unit.width" value="px"/>
+				</reportElement>
+				<box>
+					<pen lineWidth="0.25" lineColor="#D2D2D2"/>
+				</box>
+				<textElement textAlignment="Center" verticalAlignment="Middle">
+					<font isBold="false"/>
+					<paragraph lineSpacing="1_1_2"/>
+				</textElement>
+				<textFieldExpression><![CDATA[$F{productName}]]></textFieldExpression>
+			</textField>
+			<textField isBlankWhenNull="true">
+				<reportElement x="450" y="0" width="110" height="45" uuid="fd442db8-d9e9-4693-a7b4-e1d3fc0a2773">
+					<property name="com.jaspersoft.studio.unit.width" value="px"/>
+				</reportElement>
+				<box>
+					<pen lineWidth="0.25" lineColor="#D2D2D2"/>
+				</box>
+				<textElement textAlignment="Center" verticalAlignment="Middle">
+					<font isBold="false"/>
+					<paragraph lineSpacing="1_1_2"/>
+				</textElement>
+				<textFieldExpression><![CDATA[$F{productCategoryName}]]></textFieldExpression>
+			</textField>
+			<textField isBlankWhenNull="true">
+				<reportElement x="560" y="0" width="80" height="45" uuid="ab42938c-4f7b-46c9-bf11-f7b13edd26c9"/>
+				<box>
+					<pen lineWidth="0.25" lineColor="#D2D2D2"/>
+				</box>
+				<textElement textAlignment="Center" verticalAlignment="Middle">
+					<font isBold="false"/>
+					<paragraph lineSpacing="1_1_2"/>
+				</textElement>
+				<textFieldExpression><![CDATA[$F{stockoutDays}]]></textFieldExpression>
+			</textField>
+			<textField isBlankWhenNull="true">
+				<reportElement x="640" y="0" width="80" height="45" uuid="ab42938c-4f7b-46c9-bf11-f7b13edd26c9"/>
+				<box>
+					<pen lineWidth="0.25" lineColor="#D2D2D2"/>
+				</box>
+				<textElement textAlignment="Center" verticalAlignment="Middle">
+					<font isBold="false"/>
+					<paragraph lineSpacing="1_1_2"/>
+				</textElement>
+				<textFieldExpression><![CDATA[$F{stockOnHand}]]></textFieldExpression>
+			</textField>
+			<textField isBlankWhenNull="true">
+				<reportElement x="720" y="0" width="80" height="45" uuid="ab42938c-4f7b-46c9-bf11-f7b13edd26c9">
+					<property name="com.jaspersoft.studio.unit.width" value="px"/>
+				</reportElement>
+				<box>
+					<pen lineWidth="0.25" lineColor="#D2D2D2"/>
+				</box>
+				<textElement textAlignment="Center" verticalAlignment="Middle">
+					<font isBold="false"/>
+					<paragraph lineSpacing="1_1_2"/>
+				</textElement>
+				<textFieldExpression><![CDATA[$F{monthOfStock}]]></textFieldExpression>
+			</textField>
+		</band>
+	</detail>
+	<pageFooter>
+		<band height="40">
+			<textField evaluationTime="Master">
+				<reportElement x="640" y="5" width="161" height="30" uuid="f1db7f67-876a-48ce-a6d2-2fdf4b475085">
+					<property name="com.jaspersoft.studio.unit.y" value="px"/>
+				</reportElement>
+				<textElement textAlignment="Right" verticalAlignment="Top"/>
+				<textFieldExpression><![CDATA[$R{report.controls.page} + $V{MASTER_CURRENT_PAGE} + " " + $R{report.controls.pageOf} + $V{MASTER_TOTAL_PAGES}]]></textFieldExpression>
+			</textField>
+		</band>
+	</pageFooter>
+	<summary>
+		<band height="52">
+			<textField>
+				<reportElement positionType="FixRelativeToBottom" x="0" y="0" width="800" height="51" uuid="4924999e-3ae8-4199-b874-b6b5ae838170">
+					<printWhenExpression><![CDATA[new Boolean($V{REPORT_COUNT}.intValue()==0) || (new Boolean($V{REPORT_COUNT}.intValue()==1) && $F{productCode} == null)]]></printWhenExpression>
+				</reportElement>
+				<textElement textAlignment="Center" verticalAlignment="Middle">
+					<font size="12" isBold="true"/>
+				</textElement>
+				<textFieldExpression><![CDATA[$R{report.footer.noDataForParameters}]]></textFieldExpression>
+			</textField>
+		</band>
+	</summary>
+</jasperReport>
