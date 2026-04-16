@@ -2,19 +2,29 @@
 <!-- Created with Jaspersoft Studio version 6.21.5.final using JasperReports Library version 6.5.1  -->
 <jasperReport xmlns="http://jasperreports.sourceforge.net/jasperreports" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://jasperreports.sourceforge.net/jasperreports http://jasperreports.sourceforge.net/xsd/jasperreport.xsd" name="PeriodicStockOnHandSummary" pageWidth="842" pageHeight="595" orientation="Landscape" whenNoDataType="AllSectionsNoDetail" columnWidth="555" leftMargin="20" rightMargin="20" topMargin="20" bottomMargin="20" isFloatColumnFooter="true" resourceBundle="resourceBundles/report_translations" uuid="caa0ba4c-33e9-4f02-bd4b-5440eeadf3a9">
 	<property name="com.jaspersoft.studio.data.defaultdataadapter" value="One Empty Record"/>
-	<property name="net.sf.jasperreports.export.xlsx.exclude.origin.band.1" value="pageHeader"/>
-	<property name="net.sf.jasperreports.export.xlsx.exclude.origin.band.2" value="pageFooter"/>
 	<property name="net.sf.jasperreports.export.xlsx.exclude.origin.keep.first.band.1" value="columnHeader"/>
+	<property name="net.sf.jasperreports.export.xlsx.exclude.origin.band.2" value="pageHeader"/>
+	<property name="net.sf.jasperreports.export.xlsx.exclude.origin.band.3" value="pageFooter"/>
+	<property name="net.sf.jasperreports.export.xlsx.exclude.origin.band.4" value="title"/>
+	<property name="net.sf.jasperreports.export.xlsx.exclude.origin.band.5" value="pageHeader"/>
+	<property name="net.sf.jasperreports.export.xlsx.exclude.origin.report.5" value="*"/>
 	<property name="net.sf.jasperreports.export.xlsx.remove.empty.space.between.rows" value="true"/>
 	<property name="net.sf.jasperreports.export.xlsx.exclude.key.PaginationText"/>
-	<property name="net.sf.jasperreports.export.xls.exclude.origin.band.1" value="pageHeader"/>
-	<property name="net.sf.jasperreports.export.xls.exclude.origin.band.2" value="pageFooter"/>
 	<property name="net.sf.jasperreports.export.xls.exclude.origin.keep.first.band.1" value="columnHeader"/>
+	<property name="net.sf.jasperreports.export.xls.exclude.origin.band.2" value="pageHeader"/>
+	<property name="net.sf.jasperreports.export.xls.exclude.origin.band.3" value="pageFooter"/>
+	<property name="net.sf.jasperreports.export.xls.exclude.origin.band.4" value="title"/>
+	<property name="net.sf.jasperreports.export.xls.exclude.origin.band.5" value="pageHeader"/>
+	<property name="net.sf.jasperreports.export.xls.exclude.origin.report.5" value="*"/>
 	<property name="net.sf.jasperreports.export.xls.remove.empty.space.between.rows" value="true"/>
 	<property name="net.sf.jasperreports.export.xls.exclude.key.PaginationText"/>
 	<property name="net.sf.jasperreports.export.csv.exclude.origin.keep.first.band.1" value="columnHeader"/>
-	<property name="net.sf.jasperreports.export.csv.exclude.origin.band.1" value="pageHeader"/>
-	<property name="net.sf.jasperreports.export.csv.exclude.origin.band.2" value="pageFooter"/>
+	<property name="net.sf.jasperreports.export.csv.exclude.origin.band.2" value="pageHeader"/>
+	<property name="net.sf.jasperreports.export.csv.exclude.origin.band.3" value="pageFooter"/>
+	<property name="net.sf.jasperreports.export.csv.exclude.origin.band.4" value="title"/>
+	<property name="net.sf.jasperreports.export.csv.exclude.origin.band.5" value="pageHeader"/>
+	<property name="net.sf.jasperreports.export.csv.exclude.origin.report.5" value="*"/>
+	<property name="net.sf.jasperreports.export.csv.remove.empty.space.between.rows" value="true"/>
 	<property name="net.sf.jasperreports.export.csv.exclude.key.PaginationText"/>
 	<style name="BaseStyle" isDefault="true" fontName="DejaVu Sans" fontSize="10"/>
 	<parameter name="date" class="java.lang.String" nestedType="java.lang.String">
@@ -82,6 +92,7 @@ products_allowed AS (
     SELECT
         DISTINCT(products.id) AS productid,
         MAX(products.versionnumber) AS productversionnumber,
+        sc.lotid AS lotid,
         facilities.id AS facilityid
     FROM referencedata.orderables AS products
     JOIN stockmanagement.stock_cards AS sc ON products.id = sc.orderableid
@@ -105,15 +116,17 @@ products_allowed AS (
             ($P{date}::date IS NOT NULL AND scli.occurreddate <= $P{date}::date)
             OR $P{date}::date IS NULL
         )
-    GROUP BY products.id, facilities.id
+    GROUP BY products.id, sc.lotid, facilities.id
 ),
 opening_stock_data AS (
     SELECT
         sc.orderableid AS productid,
+        sc.lotid AS lotid,
         sc.facilityid AS facilityid,
         SUM(latest_soh.stockonhand) AS opening_stock
     FROM stockmanagement.stock_cards sc
     JOIN products_allowed pa ON sc.orderableid = pa.productid
+        AND (sc.lotid = pa.lotid OR (sc.lotid IS NULL AND pa.lotid IS NULL))
         AND sc.facilityid = pa.facilityid
     JOIN LATERAL (
         SELECT csoh.stockonhand
@@ -123,12 +136,13 @@ opening_stock_data AS (
         ORDER BY csoh.occurreddate DESC
         LIMIT 1
     ) latest_soh ON TRUE
-    GROUP BY sc.orderableid, sc.facilityid
+    GROUP BY sc.orderableid, sc.lotid, sc.facilityid
 ),
 soh_data AS (
     SELECT
         products.id AS productid,
-        f.id AS facilityid,
+        stock_cards.lotid AS lotid,
+        stock_cards.facilityid AS facilityid,
         SUM(soh.stockonhand) AS stockonhand
     FROM stockmanagement.stock_cards AS stock_cards
     JOIN stockmanagement.calculated_stocks_on_hand AS soh ON soh.stockcardid = stock_cards.id
@@ -144,15 +158,16 @@ soh_data AS (
             stockcardid
     ) AS cs ON cs.stockcardid = soh.stockcardid AND cs.max_date = soh.occurreddate
     JOIN referencedata.orderables products ON products.id = stock_cards.orderableid
-    JOIN referencedata.facilities f ON stock_cards.facilityid = f.id
     JOIN products_allowed pa ON products.id = pa.productid
         AND products.versionnumber = pa.productversionnumber
+        AND (stock_cards.lotid = pa.lotid OR (stock_cards.lotid IS NULL AND pa.lotid IS NULL))
         AND stock_cards.facilityid = pa.facilityid
-    GROUP BY products.id, f.id
+    GROUP BY products.id, stock_cards.lotid, stock_cards.facilityid
 ),
 quantity_data AS (
     SELECT
         sc.orderableid AS productid,
+        sc.lotid AS lotid,
         sc.facilityid AS facilityid,
         SUM(scli.quantity) FILTER (WHERE scli.sourceid IS NOT NULL) AS quantity_received,
         SUM(scli.quantity) FILTER (WHERE scli.destinationid IS NOT NULL) AS quantity_issued,
@@ -169,70 +184,21 @@ quantity_data AS (
     JOIN referencedata.orderables products ON products.id = sc.orderableid
     JOIN products_allowed pa ON products.id = pa.productid
         AND products.versionnumber = pa.productversionnumber
+        AND (sc.lotid = pa.lotid OR (sc.lotid IS NULL AND pa.lotid IS NULL))
         AND sc.facilityid = pa.facilityid
     LEFT JOIN stockmanagement.physical_inventory_line_item_adjustments adjustments ON scli.id = adjustments.stockcardlineitemid
     LEFT JOIN stockmanagement.stock_card_line_item_reasons sclir
         ON scli.reasonid = sclir.id OR adjustments.reasonid = sclir.id
     WHERE
         scli.occurreddate = $P{date}::date
-    GROUP BY sc.orderableid, sc.facilityid
-),
-amc_data AS (
-    WITH monthly_consumption AS (
-        SELECT
-            date_trunc('month', scli.occurreddate)::date AS month_date,
-            sc.orderableid AS productid,
-            sc.facilityid,
-            SUM(ABS(scli.quantity)) FILTER (
-                WHERE scli.destinationid IS NOT NULL OR sclir.reasontype = 'DEBIT'
-            ) AS consumption,
-            COUNT(DISTINCT scli.occurreddate::date) AS active_days
-        FROM stockmanagement.stock_card_line_items scli
-        JOIN stockmanagement.stock_cards sc ON scli.stockcardid = sc.id
-        JOIN products_allowed pa ON sc.orderableid = pa.productid
-            AND sc.facilityid = pa.facilityid
-        LEFT JOIN stockmanagement.stock_card_line_item_reasons sclir ON scli.reasonid = sclir.id
-        WHERE scli.occurreddate >= ($P{date}::date - INTERVAL '6 months')
-            AND scli.occurreddate < date_trunc('month', $P{date}::date)
-        GROUP BY date_trunc('month', scli.occurreddate)::date, sc.orderableid, sc.facilityid
-    ),
-    monthly_stockout_days AS (
-        SELECT
-            date_trunc('month', csoh.occurreddate)::date AS month_date,
-            sc.orderableid AS productid,
-            sc.facilityid,
-            COUNT(*) FILTER (WHERE csoh.stockonhand = 0) AS stockout_days
-        FROM stockmanagement.calculated_stocks_on_hand csoh
-        JOIN stockmanagement.stock_cards sc ON csoh.stockcardid = sc.id
-        JOIN products_allowed pa ON sc.orderableid = pa.productid
-            AND sc.facilityid = pa.facilityid
-        WHERE csoh.occurreddate >= ($P{date}::date - INTERVAL '6 months')
-            AND csoh.occurreddate < date_trunc('month', $P{date}::date)
-        GROUP BY date_trunc('month', csoh.occurreddate)::date, sc.orderableid, sc.facilityid
-    )
-    SELECT
-        mc.productid,
-        mc.facilityid,
-        ROUND(AVG(
-            CASE
-                WHEN mc.active_days > COALESCE(msd.stockout_days, 0) AND mc.active_days > 0
-                THEN (mc.consumption::numeric / (mc.active_days - COALESCE(msd.stockout_days, 0))) * mc.active_days
-                ELSE COALESCE(mc.consumption, 0)
-            END
-        ), 2) AS amc
-    FROM monthly_consumption mc
-    LEFT JOIN monthly_stockout_days msd
-        ON mc.month_date = msd.month_date
-        AND mc.productid = msd.productid
-        AND mc.facilityid = msd.facilityid
-    WHERE mc.month_date >= ($P{date}::date - INTERVAL '3 months')
-        AND mc.month_date < date_trunc('month', $P{date}::date)
-    GROUP BY mc.productid, mc.facilityid
+    GROUP BY sc.orderableid, sc.lotid, sc.facilityid
 )
 SELECT
     products.code AS productCode,
     products.fullproductname AS productName,
     product_categories.displayname AS productCategoryName,
+    lots.lotcode AS lotCode,
+    lots.expirationdate AS lotExpirationDate,
     facilities.name AS facilityName,
     COALESCE(osd.opening_stock, 0) AS openingStock,
     COALESCE(cdd.quantity_received, 0) AS stockReceived,
@@ -240,20 +206,18 @@ SELECT
     COALESCE(cdd.quantity_adjusted_credit, 0) - COALESCE(cdd.quantity_adjusted_debit, 0)
         + COALESCE(cdd.quantity_physical_inventory_adjusted_credit, 0) - COALESCE(cdd.quantity_physical_inventory_adjusted_debit, 0)
         AS adjustment,
-    COALESCE(soh.stockonhand, 0) AS stockOnHand,
-    COALESCE(amc.amc, 0) AS averageMonthlyConsumption
+    COALESCE(soh.stockonhand, 0) AS stockOnHand
 FROM referencedata.orderables AS products
 JOIN products_allowed AS pa ON products.id = pa.productid
     AND products.versionnumber = pa.productversionnumber
 LEFT JOIN opening_stock_data AS osd
-    ON products.id = osd.productid AND pa.facilityid = osd.facilityid
+    ON products.id = osd.productid AND pa.facilityid = osd.facilityid AND (pa.lotid = osd.lotid OR (pa.lotid IS NULL AND osd.lotid IS NULL))
 LEFT JOIN quantity_data AS cdd
-    ON products.id = cdd.productid AND pa.facilityid = cdd.facilityid
+    ON products.id = cdd.productid AND pa.facilityid = cdd.facilityid AND (pa.lotid = cdd.lotid OR (pa.lotid IS NULL AND cdd.lotid IS NULL))
 LEFT JOIN soh_data AS soh
-    ON products.id = soh.productid AND pa.facilityid = soh.facilityid
-LEFT JOIN amc_data AS amc
-    ON products.id = amc.productid AND pa.facilityid = amc.facilityid
+    ON products.id = soh.productid AND pa.facilityid = soh.facilityid AND (pa.lotid = soh.lotid OR (pa.lotid IS NULL AND soh.lotid IS NULL))
 LEFT JOIN referencedata.facilities AS facilities ON facilities.id = pa.facilityid
+LEFT JOIN referencedata.lots AS lots ON lots.id = pa.lotid
 LEFT JOIN (
 	SELECT DISTINCT ON (orderableid)
 		orderableid, orderableversionnumber, orderabledisplaycategoryid
@@ -263,19 +227,20 @@ LEFT JOIN (
     AND program_orderables.orderableversionnumber = products.versionnumber
 LEFT JOIN referencedata.orderable_display_categories AS product_categories ON
     product_categories.id = program_orderables.orderabledisplaycategoryid
-ORDER BY facilities.name, products.code
+ORDER BY facilities.name, products.code, lots.lotCode
 ]]>
 	</queryString>
 	<field name="facilityName" class="java.lang.String"/>
 	<field name="productName" class="java.lang.String"/>
 	<field name="productCode" class="java.lang.String"/>
 	<field name="productCategoryName" class="java.lang.String"/>
+	<field name="lotCode" class="java.lang.String"/>
+	<field name="lotExpirationDate" class="java.lang.String"/>
 	<field name="openingStock" class="java.lang.String"/>
 	<field name="stockReceived" class="java.lang.String"/>
 	<field name="issuedQuantity" class="java.lang.String"/>
 	<field name="adjustment" class="java.lang.String"/>
 	<field name="stockOnHand" class="java.lang.String"/>
-	<field name="averageMonthlyConsumption" class="java.lang.String"/>
 	<background>
 		<band splitType="Stretch"/>
 	</background>
@@ -374,7 +339,9 @@ ORDER BY facilities.name, products.code
 				</graphicElement>
 			</rectangle>
 			<textField isStretchWithOverflow="true">
-				<reportElement stretchType="RelativeToBandHeight" x="0" y="0" width="110" height="40" uuid="d6aeff36-c462-4fcd-9b56-19d439c2a1d3"/>
+				<reportElement stretchType="RelativeToBandHeight" x="0" y="0" width="100" height="40" uuid="d6aeff36-c462-4fcd-9b56-19d439c2a1d3">
+					<property name="com.jaspersoft.studio.unit.width" value="px"/>
+				</reportElement>
 				<box topPadding="1" leftPadding="1" bottomPadding="1" rightPadding="1">
 					<pen lineWidth="1.0" lineColor="#80C7E8"/>
 					<topPen lineWidth="0.0" lineStyle="Solid" lineColor="#000000"/>
@@ -388,7 +355,10 @@ ORDER BY facilities.name, products.code
 				<textFieldExpression><![CDATA[$R{report.column.facility}]]></textFieldExpression>
 			</textField>
 			<textField isStretchWithOverflow="true">
-				<reportElement stretchType="RelativeToBandHeight" x="110" y="0" width="90" height="40" uuid="d6aeff36-c462-4fcd-9b56-19d439c2a1d3"/>
+				<reportElement stretchType="RelativeToBandHeight" x="100" y="0" width="70" height="40" uuid="d6aeff36-c462-4fcd-9b56-19d439c2a1d3">
+					<property name="com.jaspersoft.studio.unit.width" value="px"/>
+					<property name="com.jaspersoft.studio.unit.x" value="px"/>
+				</reportElement>
 				<box topPadding="1" leftPadding="1" bottomPadding="1" rightPadding="1">
 					<pen lineWidth="1.0" lineColor="#80C7E8"/>
 					<topPen lineWidth="0.0" lineStyle="Solid" lineColor="#000000"/>
@@ -402,9 +372,7 @@ ORDER BY facilities.name, products.code
 				<textFieldExpression><![CDATA[$R{report.column.productCode}]]></textFieldExpression>
 			</textField>
 			<textField isStretchWithOverflow="true">
-				<reportElement stretchType="RelativeToBandHeight" x="200" y="0" width="140" height="40" uuid="03e904f1-b042-46fc-b9dc-8df07c88dc7e">
-					<property name="com.jaspersoft.studio.unit.width" value="px"/>
-				</reportElement>
+				<reportElement stretchType="RelativeToBandHeight" x="170" y="0" width="120" height="40" uuid="03e904f1-b042-46fc-b9dc-8df07c88dc7e"/>
 				<box topPadding="1" leftPadding="1" bottomPadding="1" rightPadding="1">
 					<pen lineWidth="1.0" lineColor="#80C7E8"/>
 					<topPen lineWidth="0.0" lineStyle="Solid" lineColor="#000000"/>
@@ -418,7 +386,9 @@ ORDER BY facilities.name, products.code
 				<textFieldExpression><![CDATA[$R{report.column.productName}]]></textFieldExpression>
 			</textField>
 			<textField isStretchWithOverflow="true">
-				<reportElement stretchType="RelativeToBandHeight" x="340" y="0" width="100" height="40" uuid="60ff0094-adb4-44c7-b2d1-c3eae0a11aa6"/>
+				<reportElement stretchType="RelativeToBandHeight" x="420" y="0" width="80" height="40" uuid="60ff0094-adb4-44c7-b2d1-c3eae0a11aa6">
+					<property name="com.jaspersoft.studio.unit.x" value="px"/>
+				</reportElement>
 				<box topPadding="1" leftPadding="1" bottomPadding="1" rightPadding="1">
 					<pen lineWidth="1.0" lineColor="#80C7E8"/>
 					<topPen lineWidth="0.0" lineStyle="Solid" lineColor="#000000"/>
@@ -432,7 +402,7 @@ ORDER BY facilities.name, products.code
 				<textFieldExpression><![CDATA[$R{report.column.productCategory}]]></textFieldExpression>
 			</textField>
 			<textField isStretchWithOverflow="true">
-				<reportElement stretchType="RelativeToBandHeight" x="440" y="0" width="60" height="40" uuid="e8d1da5c-0be4-4e92-971f-951aefa16f30">
+				<reportElement stretchType="RelativeToBandHeight" x="500" y="0" width="60" height="40" uuid="e8d1da5c-0be4-4e92-971f-951aefa16f30">
 					<property name="com.jaspersoft.studio.unit.width" value="px"/>
 				</reportElement>
 				<box topPadding="1" leftPadding="1" bottomPadding="1" rightPadding="1">
@@ -448,7 +418,7 @@ ORDER BY facilities.name, products.code
 				<textFieldExpression><![CDATA[$R{report.column.openingStock}]]></textFieldExpression>
 			</textField>
 			<textField isStretchWithOverflow="true">
-				<reportElement stretchType="RelativeToBandHeight" x="500" y="0" width="60" height="40" uuid="a20895bc-59a8-4277-9b73-b59218d1eaa2"/>
+				<reportElement stretchType="RelativeToBandHeight" x="560" y="0" width="60" height="40" uuid="a20895bc-59a8-4277-9b73-b59218d1eaa2"/>
 				<box topPadding="1" leftPadding="1" bottomPadding="1" rightPadding="1">
 					<pen lineWidth="1.0" lineColor="#80C7E8"/>
 					<topPen lineWidth="0.0" lineStyle="Solid" lineColor="#000000"/>
@@ -462,7 +432,7 @@ ORDER BY facilities.name, products.code
 				<textFieldExpression><![CDATA[$R{report.column.stockReceived}]]></textFieldExpression>
 			</textField>
 			<textField isStretchWithOverflow="true">
-				<reportElement stretchType="RelativeToBandHeight" x="560" y="0" width="60" height="40" uuid="0d0c5ae9-aa48-4ecd-b0e9-e2a9f824c218"/>
+				<reportElement stretchType="RelativeToBandHeight" x="620" y="0" width="60" height="40" uuid="0d0c5ae9-aa48-4ecd-b0e9-e2a9f824c218"/>
 				<box topPadding="1" leftPadding="1" bottomPadding="1" rightPadding="1">
 					<pen lineWidth="1.0" lineColor="#80C7E8"/>
 					<topPen lineWidth="0.0" lineStyle="Solid" lineColor="#000000"/>
@@ -476,7 +446,7 @@ ORDER BY facilities.name, products.code
 				<textFieldExpression><![CDATA[$R{report.column.issuedQuantity}]]></textFieldExpression>
 			</textField>
 			<textField isStretchWithOverflow="true">
-				<reportElement stretchType="RelativeToBandHeight" x="620" y="0" width="60" height="40" uuid="0f4fdf0c-afe1-4846-9204-486a6f8a9cff"/>
+				<reportElement stretchType="RelativeToBandHeight" x="680" y="0" width="60" height="40" uuid="0f4fdf0c-afe1-4846-9204-486a6f8a9cff"/>
 				<box topPadding="1" leftPadding="1" bottomPadding="1" rightPadding="1">
 					<pen lineWidth="1.0" lineColor="#80C7E8"/>
 					<topPen lineWidth="0.0" lineStyle="Solid" lineColor="#000000"/>
@@ -490,7 +460,7 @@ ORDER BY facilities.name, products.code
 				<textFieldExpression><![CDATA[$R{report.column.adjustments}]]></textFieldExpression>
 			</textField>
 			<textField isStretchWithOverflow="true">
-				<reportElement stretchType="RelativeToBandHeight" x="680" y="0" width="60" height="40" uuid="50db7058-7e22-455f-8d1c-74bb24ec4033"/>
+				<reportElement stretchType="RelativeToBandHeight" x="740" y="0" width="60" height="40" uuid="50db7058-7e22-455f-8d1c-74bb24ec4033"/>
 				<box topPadding="1" leftPadding="1" bottomPadding="1" rightPadding="1">
 					<pen lineWidth="1.0" lineColor="#80C7E8"/>
 					<topPen lineWidth="0.0" lineStyle="Solid" lineColor="#000000"/>
@@ -504,7 +474,10 @@ ORDER BY facilities.name, products.code
 				<textFieldExpression><![CDATA[$R{report.column.stockOnHand}]]></textFieldExpression>
 			</textField>
 			<textField isStretchWithOverflow="true">
-				<reportElement stretchType="RelativeToBandHeight" x="740" y="0" width="60" height="40" uuid="f52a7cda-ab58-409e-8450-541f765dc6d1"/>
+				<reportElement stretchType="RelativeToBandHeight" x="290" y="0" width="70" height="40" uuid="f52a7cda-ab58-409e-8450-541f765dc6d1">
+					<property name="com.jaspersoft.studio.unit.x" value="px"/>
+					<property name="com.jaspersoft.studio.unit.width" value="px"/>
+				</reportElement>
 				<box topPadding="1" leftPadding="1" bottomPadding="1" rightPadding="1">
 					<pen lineWidth="1.0" lineColor="#80C7E8"/>
 					<topPen lineWidth="0.0" lineStyle="Solid" lineColor="#000000"/>
@@ -515,7 +488,21 @@ ORDER BY facilities.name, products.code
 				<textElement textAlignment="Center" verticalAlignment="Middle">
 					<font fontName="DejaVu Sans" isBold="true"/>
 				</textElement>
-				<textFieldExpression><![CDATA[$R{report.column.averageMonthlyConsumption}]]></textFieldExpression>
+				<textFieldExpression><![CDATA[$R{report.column.lotCode}]]></textFieldExpression>
+			</textField>
+			<textField isStretchWithOverflow="true">
+				<reportElement stretchType="RelativeToBandHeight" x="360" y="0" width="60" height="40" uuid="2680ac21-021d-47fa-b8eb-825ecd5a55d7"/>
+				<box topPadding="1" leftPadding="1" bottomPadding="1" rightPadding="1">
+					<pen lineWidth="1.0" lineColor="#80C7E8"/>
+					<topPen lineWidth="0.0" lineStyle="Solid" lineColor="#000000"/>
+					<leftPen lineWidth="0.0" lineStyle="Solid" lineColor="#000000"/>
+					<bottomPen lineWidth="0.0" lineStyle="Solid" lineColor="#000000"/>
+					<rightPen lineWidth="0.0" lineStyle="Solid" lineColor="#000000"/>
+				</box>
+				<textElement textAlignment="Center" verticalAlignment="Middle">
+					<font fontName="DejaVu Sans" isBold="true"/>
+				</textElement>
+				<textFieldExpression><![CDATA[$R{report.column.expirationDate}]]></textFieldExpression>
 			</textField>
 		</band>
 	</columnHeader>
@@ -530,8 +517,7 @@ ORDER BY facilities.name, products.code
 				</graphicElement>
 			</rectangle>
 			<textField isBlankWhenNull="true">
-				<reportElement x="0" y="0" width="110" height="45" uuid="22c747ca-ce9b-42ff-883b-ba6d9bcce6c2">
-					<property name="com.jaspersoft.studio.unit.width" value="px"/>
+				<reportElement x="0" y="0" width="100" height="45" uuid="22c747ca-ce9b-42ff-883b-ba6d9bcce6c2">
 					<property name="com.jaspersoft.studio.unit.height" value="pixel"/>
 				</reportElement>
 				<box>
@@ -544,9 +530,10 @@ ORDER BY facilities.name, products.code
 				<textFieldExpression><![CDATA[$F{facilityName}]]></textFieldExpression>
 			</textField>
 			<textField isBlankWhenNull="true">
-				<reportElement x="110" y="0" width="90" height="45" uuid="22c747ca-ce9b-42ff-883b-ba6d9bcce6c2">
+				<reportElement x="100" y="0" width="70" height="45" uuid="22c747ca-ce9b-42ff-883b-ba6d9bcce6c2">
 					<property name="com.jaspersoft.studio.unit.width" value="px"/>
 					<property name="com.jaspersoft.studio.unit.height" value="pixel"/>
+					<property name="com.jaspersoft.studio.unit.x" value="px"/>
 				</reportElement>
 				<box>
 					<pen lineWidth="0.25" lineColor="#D2D2D2"/>
@@ -558,8 +545,9 @@ ORDER BY facilities.name, products.code
 				<textFieldExpression><![CDATA[$F{productCode}]]></textFieldExpression>
 			</textField>
 			<textField isBlankWhenNull="true">
-				<reportElement x="200" y="0" width="140" height="45" uuid="158b0d96-0c90-48a4-87de-36d2380266af">
+				<reportElement x="170" y="0" width="120" height="45" uuid="158b0d96-0c90-48a4-87de-36d2380266af">
 					<property name="com.jaspersoft.studio.unit.width" value="px"/>
+					<property name="com.jaspersoft.studio.unit.x" value="px"/>
 				</reportElement>
 				<box>
 					<pen lineWidth="0.25" lineColor="#D2D2D2"/>
@@ -571,8 +559,9 @@ ORDER BY facilities.name, products.code
 				<textFieldExpression><![CDATA[$F{productName}]]></textFieldExpression>
 			</textField>
 			<textField isBlankWhenNull="true">
-				<reportElement x="340" y="0" width="100" height="45" uuid="fd442db8-d9e9-4693-a7b4-e1d3fc0a2773">
+				<reportElement x="420" y="0" width="80" height="45" uuid="fd442db8-d9e9-4693-a7b4-e1d3fc0a2773">
 					<property name="com.jaspersoft.studio.unit.width" value="px"/>
+					<property name="com.jaspersoft.studio.unit.x" value="px"/>
 				</reportElement>
 				<box>
 					<pen lineWidth="0.25" lineColor="#D2D2D2"/>
@@ -582,19 +571,6 @@ ORDER BY facilities.name, products.code
 					<paragraph lineSpacing="1_1_2"/>
 				</textElement>
 				<textFieldExpression><![CDATA[$F{productCategoryName}]]></textFieldExpression>
-			</textField>
-			<textField isBlankWhenNull="true">
-				<reportElement x="440" y="0" width="60" height="45" uuid="ab42938c-4f7b-46c9-bf11-f7b13edd26c9">
-					<property name="com.jaspersoft.studio.unit.width" value="px"/>
-				</reportElement>
-				<box>
-					<pen lineWidth="0.25" lineColor="#D2D2D2"/>
-				</box>
-				<textElement textAlignment="Center" verticalAlignment="Middle">
-					<font isBold="false"/>
-					<paragraph lineSpacing="1_1_2"/>
-				</textElement>
-				<textFieldExpression><![CDATA[$F{openingStock}]]></textFieldExpression>
 			</textField>
 			<textField isBlankWhenNull="true">
 				<reportElement x="500" y="0" width="60" height="45" uuid="ab42938c-4f7b-46c9-bf11-f7b13edd26c9">
@@ -607,7 +583,7 @@ ORDER BY facilities.name, products.code
 					<font isBold="false"/>
 					<paragraph lineSpacing="1_1_2"/>
 				</textElement>
-				<textFieldExpression><![CDATA[$F{stockReceived}]]></textFieldExpression>
+				<textFieldExpression><![CDATA[$F{openingStock}]]></textFieldExpression>
 			</textField>
 			<textField isBlankWhenNull="true">
 				<reportElement x="560" y="0" width="60" height="45" uuid="ab42938c-4f7b-46c9-bf11-f7b13edd26c9">
@@ -620,11 +596,12 @@ ORDER BY facilities.name, products.code
 					<font isBold="false"/>
 					<paragraph lineSpacing="1_1_2"/>
 				</textElement>
-				<textFieldExpression><![CDATA[$F{issuedQuantity}]]></textFieldExpression>
+				<textFieldExpression><![CDATA[$F{stockReceived}]]></textFieldExpression>
 			</textField>
 			<textField isBlankWhenNull="true">
 				<reportElement x="620" y="0" width="60" height="45" uuid="ab42938c-4f7b-46c9-bf11-f7b13edd26c9">
 					<property name="com.jaspersoft.studio.unit.width" value="px"/>
+					<property name="com.jaspersoft.studio.unit.x" value="pixel"/>
 				</reportElement>
 				<box>
 					<pen lineWidth="0.25" lineColor="#D2D2D2"/>
@@ -633,7 +610,7 @@ ORDER BY facilities.name, products.code
 					<font isBold="false"/>
 					<paragraph lineSpacing="1_1_2"/>
 				</textElement>
-				<textFieldExpression><![CDATA[$F{adjustment}]]></textFieldExpression>
+				<textFieldExpression><![CDATA[$F{issuedQuantity}]]></textFieldExpression>
 			</textField>
 			<textField isBlankWhenNull="true">
 				<reportElement x="680" y="0" width="60" height="45" uuid="ab42938c-4f7b-46c9-bf11-f7b13edd26c9">
@@ -646,7 +623,7 @@ ORDER BY facilities.name, products.code
 					<font isBold="false"/>
 					<paragraph lineSpacing="1_1_2"/>
 				</textElement>
-				<textFieldExpression><![CDATA[$F{stockOnHand}]]></textFieldExpression>
+				<textFieldExpression><![CDATA[$F{adjustment}]]></textFieldExpression>
 			</textField>
 			<textField isBlankWhenNull="true">
 				<reportElement x="740" y="0" width="60" height="45" uuid="ab42938c-4f7b-46c9-bf11-f7b13edd26c9">
@@ -659,7 +636,35 @@ ORDER BY facilities.name, products.code
 					<font isBold="false"/>
 					<paragraph lineSpacing="1_1_2"/>
 				</textElement>
-				<textFieldExpression><![CDATA[$F{averageMonthlyConsumption}]]></textFieldExpression>
+				<textFieldExpression><![CDATA[$F{stockOnHand}]]></textFieldExpression>
+			</textField>
+			<textField isBlankWhenNull="true">
+				<reportElement x="290" y="0" width="70" height="45" uuid="ab42938c-4f7b-46c9-bf11-f7b13edd26c9">
+					<property name="com.jaspersoft.studio.unit.width" value="px"/>
+					<property name="com.jaspersoft.studio.unit.x" value="px"/>
+				</reportElement>
+				<box>
+					<pen lineWidth="0.25" lineColor="#D2D2D2"/>
+				</box>
+				<textElement textAlignment="Center" verticalAlignment="Middle">
+					<font isBold="false"/>
+					<paragraph lineSpacing="1_1_2"/>
+				</textElement>
+				<textFieldExpression><![CDATA[$F{lotCode}]]></textFieldExpression>
+			</textField>
+			<textField isBlankWhenNull="true">
+				<reportElement x="360" y="0" width="60" height="45" uuid="7a21b223-7de9-419d-a6f4-c1a277fa56cf">
+					<property name="com.jaspersoft.studio.unit.width" value="px"/>
+					<property name="com.jaspersoft.studio.unit.x" value="px"/>
+				</reportElement>
+				<box>
+					<pen lineWidth="0.25" lineColor="#D2D2D2"/>
+				</box>
+				<textElement textAlignment="Center" verticalAlignment="Middle">
+					<font isBold="false"/>
+					<paragraph lineSpacing="1_1_2"/>
+				</textElement>
+				<textFieldExpression><![CDATA[$F{lotExpirationDate}]]></textFieldExpression>
 			</textField>
 		</band>
 	</detail>
