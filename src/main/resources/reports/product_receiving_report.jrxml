@@ -2,20 +2,14 @@
 <!-- Created with Jaspersoft Studio version 6.21.5.final using JasperReports Library version 6.5.1  -->
 <jasperReport xmlns="http://jasperreports.sourceforge.net/jasperreports" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://jasperreports.sourceforge.net/jasperreports http://jasperreports.sourceforge.net/xsd/jasperreport.xsd" name="PeriodicStockOnHandSummary" pageWidth="842" pageHeight="595" orientation="Landscape" whenNoDataType="AllSectionsNoDetail" columnWidth="555" leftMargin="20" rightMargin="20" topMargin="20" bottomMargin="20" isFloatColumnFooter="true" resourceBundle="resourceBundles/report_translations" uuid="caa0ba4c-33e9-4f02-bd4b-5440eeadf3a9">
 	<property name="com.jaspersoft.studio.data.defaultdataadapter" value="One Empty Record"/>
+    <property name="net.sf.jasperreports.export.xlsx.exclude.origin.band.1" value="pageHeader"/>
+    <property name="net.sf.jasperreports.export.xlsx.exclude.origin.band.2" value="pageFooter"/>
     <property name="net.sf.jasperreports.export.xlsx.exclude.origin.keep.first.band.1" value="columnHeader"/>
-    <property name="net.sf.jasperreports.export.xlsx.exclude.origin.band.2" value="pageHeader"/>
-    <property name="net.sf.jasperreports.export.xlsx.exclude.origin.band.3" value="pageFooter"/>
-    <property name="net.sf.jasperreports.export.xlsx.exclude.origin.band.4" value="title"/>
-    <property name="net.sf.jasperreports.export.xlsx.exclude.origin.band.5" value="pageHeader"/>
-    <property name="net.sf.jasperreports.export.xlsx.exclude.origin.report.5" value="*"/>
     <property name="net.sf.jasperreports.export.xlsx.remove.empty.space.between.rows" value="true"/>
     <property name="net.sf.jasperreports.export.xlsx.exclude.key.PaginationText"/>
+    <property name="net.sf.jasperreports.export.xls.exclude.origin.band.1" value="pageHeader"/>
+    <property name="net.sf.jasperreports.export.xls.exclude.origin.band.2" value="pageFooter"/>
     <property name="net.sf.jasperreports.export.xls.exclude.origin.keep.first.band.1" value="columnHeader"/>
-    <property name="net.sf.jasperreports.export.xls.exclude.origin.band.2" value="pageHeader"/>
-    <property name="net.sf.jasperreports.export.xls.exclude.origin.band.3" value="pageFooter"/>
-    <property name="net.sf.jasperreports.export.xls.exclude.origin.band.4" value="title"/>
-    <property name="net.sf.jasperreports.export.xls.exclude.origin.band.5" value="pageHeader"/>
-    <property name="net.sf.jasperreports.export.xls.exclude.origin.report.5" value="*"/>
     <property name="net.sf.jasperreports.export.xls.remove.empty.space.between.rows" value="true"/>
     <property name="net.sf.jasperreports.export.xls.exclude.key.PaginationText"/>
     <property name="net.sf.jasperreports.export.csv.exclude.origin.keep.first.band.1" value="columnHeader"/>
