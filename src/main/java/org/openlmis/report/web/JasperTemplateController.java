@@ -23,6 +23,8 @@ import java.net.MalformedURLException;
 import java.nio.charset.StandardCharsets;
 import java.text.DecimalFormat;
 import java.text.DecimalFormatSymbols;
+import java.time.LocalDate;
+import java.time.format.DateTimeFormatter;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
@@ -241,7 +243,8 @@ public class JasperTemplateController extends BaseController {
     } else {
       mediaType = MediaType.APPLICATION_PDF;
     }
-    String fileName = template.getName().replaceAll("\\s+", "_");
+    String dateSuffix = LocalDate.now().format(DateTimeFormatter.ofPattern("dd-MM-yyyy"));
+    String fileName = template.getName().replaceAll("\\s+", "_") + "_" + dateSuffix;
 
     return ResponseEntity
         .ok()
