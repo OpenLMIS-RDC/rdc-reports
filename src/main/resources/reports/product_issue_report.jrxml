@@ -2,24 +2,24 @@
 <!-- Created with Jaspersoft Studio version 6.21.5.final using JasperReports Library version 6.5.1  -->
 <jasperReport xmlns="http://jasperreports.sourceforge.net/jasperreports" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://jasperreports.sourceforge.net/jasperreports http://jasperreports.sourceforge.net/xsd/jasperreport.xsd" name="PeriodicStockOnHandSummary" pageWidth="842" pageHeight="595" orientation="Landscape" whenNoDataType="AllSectionsNoDetail" columnWidth="555" leftMargin="20" rightMargin="20" topMargin="20" bottomMargin="20" isFloatColumnFooter="true" resourceBundle="resourceBundles/report_translations" uuid="caa0ba4c-33e9-4f02-bd4b-5440eeadf3a9">
 	<property name="com.jaspersoft.studio.data.defaultdataadapter" value="One Empty Record"/>
-    <property name="net.sf.jasperreports.export.xlsx.exclude.origin.band.1" value="pageHeader"/>
-    <property name="net.sf.jasperreports.export.xlsx.exclude.origin.band.2" value="pageFooter"/>
-    <property name="net.sf.jasperreports.export.xlsx.exclude.origin.keep.first.band.1" value="columnHeader"/>
-    <property name="net.sf.jasperreports.export.xlsx.remove.empty.space.between.rows" value="true"/>
-    <property name="net.sf.jasperreports.export.xlsx.exclude.key.PaginationText"/>
-    <property name="net.sf.jasperreports.export.xls.exclude.origin.band.1" value="pageHeader"/>
-    <property name="net.sf.jasperreports.export.xls.exclude.origin.band.2" value="pageFooter"/>
-    <property name="net.sf.jasperreports.export.xls.exclude.origin.keep.first.band.1" value="columnHeader"/>
-    <property name="net.sf.jasperreports.export.xls.remove.empty.space.between.rows" value="true"/>
-    <property name="net.sf.jasperreports.export.xls.exclude.key.PaginationText"/>
-    <property name="net.sf.jasperreports.export.csv.exclude.origin.keep.first.band.1" value="columnHeader"/>
-    <property name="net.sf.jasperreports.export.csv.exclude.origin.band.2" value="pageHeader"/>
-    <property name="net.sf.jasperreports.export.csv.exclude.origin.band.3" value="pageFooter"/>
-    <property name="net.sf.jasperreports.export.csv.exclude.origin.band.4" value="title"/>
-    <property name="net.sf.jasperreports.export.csv.exclude.origin.band.5" value="pageHeader"/>
-    <property name="net.sf.jasperreports.export.csv.exclude.origin.report.5" value="*"/>
-    <property name="net.sf.jasperreports.export.csv.remove.empty.space.between.rows" value="true"/>
-    <property name="net.sf.jasperreports.export.csv.exclude.key.PaginationText"/>
+	<property name="net.sf.jasperreports.export.xlsx.exclude.origin.band.1" value="pageHeader"/>
+	<property name="net.sf.jasperreports.export.xlsx.exclude.origin.band.2" value="pageFooter"/>
+	<property name="net.sf.jasperreports.export.xlsx.exclude.origin.keep.first.band.1" value="columnHeader"/>
+	<property name="net.sf.jasperreports.export.xlsx.remove.empty.space.between.rows" value="true"/>
+	<property name="net.sf.jasperreports.export.xlsx.exclude.key.PaginationText"/>
+	<property name="net.sf.jasperreports.export.xls.exclude.origin.band.1" value="pageHeader"/>
+	<property name="net.sf.jasperreports.export.xls.exclude.origin.band.2" value="pageFooter"/>
+	<property name="net.sf.jasperreports.export.xls.exclude.origin.keep.first.band.1" value="columnHeader"/>
+	<property name="net.sf.jasperreports.export.xls.remove.empty.space.between.rows" value="true"/>
+	<property name="net.sf.jasperreports.export.xls.exclude.key.PaginationText"/>
+	<property name="net.sf.jasperreports.export.csv.exclude.origin.keep.first.band.1" value="columnHeader"/>
+	<property name="net.sf.jasperreports.export.csv.exclude.origin.band.2" value="pageHeader"/>
+	<property name="net.sf.jasperreports.export.csv.exclude.origin.band.3" value="pageFooter"/>
+	<property name="net.sf.jasperreports.export.csv.exclude.origin.band.4" value="title"/>
+	<property name="net.sf.jasperreports.export.csv.exclude.origin.band.5" value="pageHeader"/>
+	<property name="net.sf.jasperreports.export.csv.exclude.origin.report.5" value="*"/>
+	<property name="net.sf.jasperreports.export.csv.remove.empty.space.between.rows" value="true"/>
+	<property name="net.sf.jasperreports.export.csv.exclude.key.PaginationText"/>
 	<style name="BaseStyle" isDefault="true" fontName="DejaVu Sans" fontSize="10"/>
 	<parameter name="startDate" class="java.lang.String" nestedType="java.lang.String">
 		<property name="displayName" value="Start Date"/>
@@ -55,8 +55,7 @@
 	</parameter>
 	<parameter name="headerTemplate" class="net.sf.jasperreports.engine.JasperReport" isForPrompting="false"/>
 	<queryString>
-		<![CDATA[
-WITH
+		<![CDATA[WITH
 latest_orderable_identifiers AS (
     SELECT DISTINCT ON (orderableid)
         orderableid,
@@ -99,6 +98,7 @@ SELECT
     lots.expirationdate AS productExpiryDate,
     lots.manufacturedate AS productManufactureDate,
     stock_card_line_items.occurreddate AS occurredDate,
+    dispensable.value AS dispensableUnit,
     stock_card_line_items.quantity AS quantity,
     products.netcontent AS netContent,
     CEIL(stock_card_line_items.quantity::numeric / products.netcontent) * program_orderables.priceperpack AS totalCost,
@@ -122,6 +122,7 @@ JOIN referencedata.programs AS programs ON stock_cards.programid =
     programs.id
 JOIN user_rights AS user_rights ON programs.id = user_rights.programid
     AND facilities.id = user_rights.facilityid
+LEFT JOIN referencedata.dispensable_attributes AS dispensable ON products.dispensableid = dispensable.dispensableid
 LEFT JOIN referencedata.lots AS lots ON lots.id = stock_cards.lotid
 LEFT JOIN vial_stage ON stock_cards.id = vial_stage.stockcardid
 LEFT JOIN stockmanagement.stock_card_line_item_reasons AS
@@ -170,8 +171,7 @@ ORDER BY
     productName,
     productCode,
     productLotCode,
-    reasonName;
-]]>
+    reasonName;]]>
 	</queryString>
 	<field name="facilityName" class="java.lang.String"/>
 	<field name="destinationFacilityName" class="java.lang.String"/>
@@ -182,6 +182,7 @@ ORDER BY
 	<field name="productExpiryDate" class="java.lang.String"/>
 	<field name="productManufactureDate" class="java.lang.String"/>
 	<field name="occurredDate" class="java.lang.String"/>
+	<field name="dispensableUnit" class="java.lang.String"/>
 	<field name="quantity" class="java.lang.Integer"/>
 	<field name="netContent" class="java.lang.Integer"/>
 	<field name="totalCost" class="java.lang.Double"/>
@@ -424,8 +425,7 @@ ORDER BY
 				<textFieldExpression><![CDATA[$R{report.column.reasonComments}]]></textFieldExpression>
 			</textField>
 			<textField isStretchWithOverflow="true">
-				<reportElement stretchType="RelativeToBandHeight" x="450" y="0" width="40" height="40" uuid="28ddc044-bb01-4f7a-be32-cab43e7f481e">
-					<property name="com.jaspersoft.studio.unit.width" value="px"/>
+				<reportElement stretchType="RelativeToBandHeight" x="450" y="0" width="50" height="40" uuid="28ddc044-bb01-4f7a-be32-cab43e7f481e">
 					<property name="com.jaspersoft.studio.unit.x" value="px"/>
 				</reportElement>
 				<box topPadding="1" leftPadding="1" bottomPadding="1" rightPadding="1">
@@ -438,10 +438,10 @@ ORDER BY
 				<textElement textAlignment="Center" verticalAlignment="Middle">
 					<font fontName="DejaVu Sans" isBold="true"/>
 				</textElement>
-				<textFieldExpression><![CDATA[$R{report.column.quantityPacks}]]></textFieldExpression>
+				<textFieldExpression><![CDATA[$R{report.column.dispensableUnit}]]></textFieldExpression>
 			</textField>
 			<textField isStretchWithOverflow="true">
-				<reportElement stretchType="RelativeToBandHeight" x="490" y="0" width="40" height="40" uuid="0f4fdf0c-afe1-4846-9204-486a6f8a9cff">
+				<reportElement stretchType="RelativeToBandHeight" x="500" y="0" width="40" height="40" uuid="0f4fdf0c-afe1-4846-9204-486a6f8a9cff">
 					<property name="com.jaspersoft.studio.unit.width" value="px"/>
 					<property name="com.jaspersoft.studio.unit.x" value="px"/>
 				</reportElement>
@@ -455,7 +455,7 @@ ORDER BY
 				<textElement textAlignment="Center" verticalAlignment="Middle">
 					<font fontName="DejaVu Sans" isBold="true"/>
 				</textElement>
-				<textFieldExpression><![CDATA[$R{report.column.quantityDoses}]]></textFieldExpression>
+				<textFieldExpression><![CDATA[$R{report.column.quantity}]]></textFieldExpression>
 			</textField>
 			<textField isStretchWithOverflow="true">
 				<reportElement stretchType="RelativeToBandHeight" x="0" y="0" width="60" height="40" uuid="50db7058-7e22-455f-8d1c-74bb24ec4033">
@@ -474,7 +474,7 @@ ORDER BY
 				<textFieldExpression><![CDATA[$R{report.column.issuedDate}]]></textFieldExpression>
 			</textField>
 			<textField isStretchWithOverflow="true">
-				<reportElement stretchType="RelativeToBandHeight" x="530" y="0" width="50" height="40" uuid="f52a7cda-ab58-409e-8450-541f765dc6d1">
+				<reportElement stretchType="RelativeToBandHeight" x="540" y="0" width="50" height="40" uuid="f52a7cda-ab58-409e-8450-541f765dc6d1">
 					<property name="com.jaspersoft.studio.unit.width" value="px"/>
 				</reportElement>
 				<box topPadding="1" leftPadding="1" bottomPadding="1" rightPadding="1">
@@ -490,10 +490,7 @@ ORDER BY
 				<textFieldExpression><![CDATA[$R{report.column.vvmStatus}]]></textFieldExpression>
 			</textField>
 			<textField isStretchWithOverflow="true">
-				<reportElement stretchType="RelativeToBandHeight" x="580" y="0" width="60" height="40" uuid="07b5cacd-fce2-45d0-940e-c873d1d64720">
-					<property name="com.jaspersoft.studio.unit.width" value="px"/>
-					<property name="com.jaspersoft.studio.unit.x" value="px"/>
-				</reportElement>
+				<reportElement stretchType="RelativeToBandHeight" x="590" y="0" width="50" height="40" uuid="07b5cacd-fce2-45d0-940e-c873d1d64720"/>
 				<box topPadding="1" leftPadding="1" bottomPadding="1" rightPadding="1">
 					<pen lineWidth="1.0" lineColor="#80C7E8"/>
 					<topPen lineWidth="0.0" lineStyle="Solid" lineColor="#000000"/>
@@ -638,7 +635,7 @@ ORDER BY
 				<textFieldExpression><![CDATA[$F{destinationFacilityName}]]></textFieldExpression>
 			</textField>
 			<textField isBlankWhenNull="true">
-				<reportElement x="450" y="0" width="40" height="45" uuid="78e963fe-1d67-4d4f-b70b-6005eaabf0dc">
+				<reportElement x="450" y="0" width="50" height="45" uuid="78e963fe-1d67-4d4f-b70b-6005eaabf0dc">
 					<property name="com.jaspersoft.studio.unit.width" value="px"/>
 					<property name="com.jaspersoft.studio.unit.x" value="px"/>
 				</reportElement>
@@ -649,8 +646,7 @@ ORDER BY
 					<font isBold="false"/>
 					<paragraph lineSpacing="1_1_2"/>
 				</textElement>
-				<textFieldExpression><![CDATA[($F{quantity} == null || $F{productCategoryName} == null || !$F{productCategoryName}.startsWith("Vaccins")) ?
-				        String.valueOf((int) Math.ceil($F{quantity} / $F{netContent})) : ""]]></textFieldExpression>
+				<textFieldExpression><![CDATA[$F{dispensableUnit}]]></textFieldExpression>
 			</textField>
 			<textField isBlankWhenNull="true">
 				<reportElement x="355" y="0" width="45" height="45" uuid="78e963fe-1d67-4d4f-b70b-6005eaabf0dc">
@@ -681,7 +677,7 @@ ORDER BY
 				<textFieldExpression><![CDATA[$F{reasonComments}]]></textFieldExpression>
 			</textField>
 			<textField isBlankWhenNull="true">
-				<reportElement x="490" y="0" width="40" height="45" uuid="5008306e-d65e-4e8f-b915-f7a3aa7d9328">
+				<reportElement x="500" y="0" width="40" height="45" uuid="5008306e-d65e-4e8f-b915-f7a3aa7d9328">
 					<property name="com.jaspersoft.studio.unit.width" value="px"/>
 					<property name="com.jaspersoft.studio.unit.x" value="px"/>
 				</reportElement>
@@ -692,7 +688,7 @@ ORDER BY
 					<font isBold="false"/>
 					<paragraph lineSpacing="1_1_2"/>
 				</textElement>
-                <textFieldExpression><![CDATA[($F{quantity} == null || $F{productCategoryName} == null || !$F{productCategoryName}.startsWith("Vaccins")) ? "" : $F{quantity}]]></textFieldExpression>
+				<textFieldExpression><![CDATA[$F{quantity}]]></textFieldExpression>
 			</textField>
 			<textField isBlankWhenNull="true">
 				<reportElement x="0" y="0" width="60" height="45" uuid="484c46c2-05e8-461f-8d10-d36048f6e909"/>
@@ -733,7 +729,7 @@ ORDER BY
 				<textFieldExpression><![CDATA[$F{productManufactureDate}]]></textFieldExpression>
 			</textField>
 			<textField isBlankWhenNull="true">
-				<reportElement x="580" y="0" width="60" height="45" uuid="cea544da-b825-4836-8bc4-37a7e4af4eea">
+				<reportElement x="590" y="0" width="50" height="45" uuid="cea544da-b825-4836-8bc4-37a7e4af4eea">
 					<property name="com.jaspersoft.studio.unit.width" value="px"/>
 					<property name="com.jaspersoft.studio.unit.x" value="px"/>
 				</reportElement>
@@ -747,7 +743,7 @@ ORDER BY
 				<textFieldExpression><![CDATA[$F{productLotCode}]]></textFieldExpression>
 			</textField>
 			<textField isBlankWhenNull="true">
-				<reportElement x="530" y="0" width="50" height="45" uuid="e114909f-9aec-4822-bdb5-f05f66e1233f">
+				<reportElement x="540" y="0" width="50" height="45" uuid="e114909f-9aec-4822-bdb5-f05f66e1233f">
 					<property name="com.jaspersoft.studio.unit.width" value="px"/>
 				</reportElement>
 				<box>
