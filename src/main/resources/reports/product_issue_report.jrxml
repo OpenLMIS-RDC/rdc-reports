@@ -48,6 +48,7 @@
 		<property name="selectExpression" value="/api/orderables"/>
 		<property name="selectProperty" value="fullProductName"/>
 		<property name="required" value="false"/>
+        <property name="dependencies" value="program:code:program"/>
 	</parameter>
 	<parameter name="userId" class="java.lang.String" isForPrompting="false">
 		<property name="displayName" value="ID of the currently authenticated user - should not be in template parameters"/>

@@ -26,11 +26,18 @@
 		<property name="required" value="true"/>
 		<parameterDescription><![CDATA[datepickers]]></parameterDescription>
 	</parameter>
+    <parameter name="geographicLevel" class="java.lang.String" nestedType="java.lang.String">
+        <property name="displayName" value="Geographic Level"/>
+        <property name="selectExpression" value="/api/geographicLevels"/>
+        <property name="selectProperty" value="name"/>
+        <property name="required" value="false"/>
+    </parameter>
 	<parameter name="geographicZone" class="java.lang.String" nestedType="java.lang.String">
 		<property name="displayName" value="Geographic Zone"/>
 		<property name="selectExpression" value="/api/geographicZones"/>
 		<property name="selectProperty" value="name"/>
 		<property name="required" value="false"/>
+        <property name="dependencies" value="geographicLevel:levelNumber:levelNumber"/>
 	</parameter>
 	<parameter name="facilityType" class="java.lang.String" nestedType="java.lang.String">
 		<property name="displayName" value="Facility Type"/>
@@ -43,6 +50,7 @@
 		<property name="selectExpression" value="/api/facilities"/>
 		<property name="selectProperty" value="name"/>
 		<property name="required" value="false"/>
+        <property name="dependencies" value="geographicZone:id:zoneId,facilityType:code:type"/>
 	</parameter>
 	<parameter name="program" class="java.lang.String" nestedType="java.lang.String">
 		<property name="displayName" value="Program"/>
@@ -55,6 +63,7 @@
 		<property name="selectExpression" value="/api/orderables"/>
 		<property name="selectProperty" value="fullProductName"/>
 		<property name="required" value="false"/>
+        <property name="dependencies" value="program:code:program"/>
 	</parameter>
 	<parameter name="userId" class="java.lang.String" isForPrompting="false">
 		<property name="displayName" value="ID of the currently authenticated user - should not be in template parameters"/>
