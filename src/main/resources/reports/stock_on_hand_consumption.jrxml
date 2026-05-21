@@ -47,7 +47,7 @@
 	</parameter>
 	<parameter name="facility" class="java.lang.String" nestedType="java.lang.String">
 		<property name="displayName" value="Facility"/>
-		<property name="selectExpression" value="/api/facilities"/>
+		<property name="selectExpression" value="/api/facilities?recurse=true"/>
 		<property name="selectProperty" value="name"/>
 		<property name="required" value="false"/>
         <property name="dependencies" value="geographicZone:id:zoneId,facilityType:code:type"/>
