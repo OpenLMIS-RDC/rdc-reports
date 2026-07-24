@@ -1,6 +1,9 @@
 1.3.0-SNAPSHOT (WIP)
 ==================
 
+New functionality:
+* [MW-1449](https://openlmis.atlassian.net/browse/MW-1449): Ported the Superset guest token endpoint for embedded dashboards from core openlmis-report (SupersetService, guest-token endpoint gated by REPORTS_VIEW, embeddedUuid on dashboard reports).
+
 1.2.0 / 2026-06-09
 ==================
 
