@@ -342,7 +342,7 @@ ORDER BY facilities.name, products.code]]>
 				<textElement textAlignment="Left" verticalAlignment="Middle">
 					<font isBold="true"/>
 				</textElement>
-				<textFieldExpression><![CDATA[$R{report.header.facility}]]></textFieldExpression>
+				<textFieldExpression><![CDATA[msg($R{report.pattern.label}, $R{report.header.facility})]]></textFieldExpression>
 			</textField>
 			<textField>
 				<reportElement x="200" y="55" width="200" height="20" uuid="dca5e26f-c56e-4405-b824-e7f5516e0a7e">
@@ -351,7 +351,7 @@ ORDER BY facilities.name, products.code]]>
 				<textElement textAlignment="Left" verticalAlignment="Middle">
 					<font size="10" isBold="true"/>
 				</textElement>
-				<textFieldExpression><![CDATA[$R{report.header.program}]]></textFieldExpression>
+				<textFieldExpression><![CDATA[msg($R{report.pattern.label}, $R{report.header.program})]]></textFieldExpression>
 			</textField>
 			<textField>
 				<reportElement x="400" y="55" width="130" height="20" uuid="48e7b132-74de-44e8-9a1f-5ab8e86adeb5">
@@ -360,7 +360,7 @@ ORDER BY facilities.name, products.code]]>
 				<textElement textAlignment="Left" verticalAlignment="Middle">
 					<font size="10" isBold="true"/>
 				</textElement>
-				<textFieldExpression><![CDATA[$R{report.header.startDate}]]></textFieldExpression>
+				<textFieldExpression><![CDATA[msg($R{report.pattern.label}, $R{report.header.startDate})]]></textFieldExpression>
 			</textField>
 			<textField>
 				<reportElement x="530" y="55" width="130" height="20" uuid="48e7b132-74de-44e8-9a1f-5ab8e86adeb5">
@@ -369,7 +369,7 @@ ORDER BY facilities.name, products.code]]>
 				<textElement textAlignment="Left" verticalAlignment="Middle">
 					<font size="10" isBold="true"/>
 				</textElement>
-				<textFieldExpression><![CDATA[$R{report.header.endDate}]]></textFieldExpression>
+				<textFieldExpression><![CDATA[msg($R{report.pattern.label}, $R{report.header.endDate})]]></textFieldExpression>
 			</textField>
 			<textField>
 				<reportElement key="" x="660" y="55" width="130" height="20" uuid="4b505859-702c-4523-b9ee-567234bef054">
@@ -378,7 +378,7 @@ ORDER BY facilities.name, products.code]]>
 				<textElement textAlignment="Left" verticalAlignment="Middle">
 					<font size="10" isBold="true"/>
 				</textElement>
-				<textFieldExpression><![CDATA[$R{report.header.reportDate}]]></textFieldExpression>
+				<textFieldExpression><![CDATA[msg($R{report.pattern.label}, $R{report.header.reportDate})]]></textFieldExpression>
 			</textField>
 			<textField>
 				<reportElement x="0" y="80" width="200" height="20" uuid="a8565621-bd19-4b76-bd5e-280c405039c6">
@@ -665,7 +665,7 @@ ORDER BY facilities.name, products.code]]>
 					<property name="com.jaspersoft.studio.unit.y" value="px"/>
 				</reportElement>
 				<textElement textAlignment="Right" verticalAlignment="Top"/>
-				<textFieldExpression><![CDATA[$R{report.controls.page} + $V{MASTER_CURRENT_PAGE} + " " + $R{report.controls.pageOf} + $V{MASTER_TOTAL_PAGES}]]></textFieldExpression>
+				<textFieldExpression><![CDATA[msg($R{report.controls.pageOfPages}, $V{MASTER_CURRENT_PAGE}, $V{MASTER_TOTAL_PAGES})]]></textFieldExpression>
 			</textField>
 		</band>
 	</pageFooter>
