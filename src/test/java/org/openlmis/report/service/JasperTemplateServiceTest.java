@@ -94,6 +94,7 @@ import org.openlmis.report.exception.JasperReportViewException;
 import org.openlmis.report.exception.ReportingException;
 import org.openlmis.report.exception.ValidationMessageException;
 import org.openlmis.report.i18n.ReportImageMessageKeys;
+import org.openlmis.report.i18n.ReportTranslationBundleProvider;
 import org.openlmis.report.repository.JasperTemplateRepository;
 import org.openlmis.report.repository.ReportCategoryRepository;
 import org.openlmis.report.repository.ReportImageRepository;
@@ -115,6 +116,9 @@ import org.springframework.web.multipart.MultipartFile;
 })
 @SuppressWarnings("PMD.TooManyMethods")
 public class JasperTemplateServiceTest {
+
+  @Mock
+  private ReportTranslationBundleProvider translationBundleProvider;
 
   @Mock
   private JasperTemplateRepository jasperTemplateRepository;
@@ -786,176 +790,6 @@ public class JasperTemplateServiceTest {
   }
 
   @Test
-  public void getLocaleBundleShouldFallbackToEnglishWhenLocaleBuilderThrows() throws Exception {
-    File mockDir = mock(File.class);
-    whenNew(File.class).withArguments(RESOURCE_BUNDLE_PATH).thenReturn(mockDir);
-    when(mockDir.exists()).thenReturn(true);
-    when(mockDir.isDirectory()).thenReturn(true);
-    when(mockDir.toURI()).thenReturn(new java.net.URI(DUMMY_FILE_URI));
-
-    ResourceBundle mockBundle = mock(ResourceBundle.class);
-    mockStatic(ResourceBundle.class);
-    when(ResourceBundle.getBundle(eq(RESOURCE_BUNDLE_NAME), any(Locale.class),
-        any(URLClassLoader.class))).thenReturn(mockBundle);
-
-    Map<String, Object> result = jasperTemplateService
-        .getLocaleBundleParameters("invalid@locale#string");
-
-    assertEquals(Locale.ENGLISH, result.get(JRParameter.REPORT_LOCALE));
-  }
-
-  @Test
-  public void getLocaleBundleShouldReturnEmptyMapIfResourceBundleDirectoryDoesNotExist()
-      throws Exception {
-    File mockDir = mock(File.class);
-    whenNew(File.class).withArguments(RESOURCE_BUNDLE_PATH).thenReturn(mockDir);
-
-    when(mockDir.exists()).thenReturn(false);
-
-    mockStatic(ResourceBundle.class);
-    when(ResourceBundle.getBundle(eq(RESOURCE_BUNDLE_NAME), any(Locale.class)))
-        .thenThrow(new MissingResourceException("Test", RESOURCE_BUNDLE_NAME, RESOURCE_BUNDLE_KEY));
-
-    assertTrue(jasperTemplateService.getLocaleBundleParameters("en").isEmpty());
-
-    when(mockDir.exists()).thenReturn(true);
-    when(mockDir.isDirectory()).thenReturn(false);
-    assertTrue(jasperTemplateService.getLocaleBundleParameters("en").isEmpty());
-  }
-
-  @Test
-  public void getLocaleBundleShouldFallbackToInternalBundleWhenConfigDirectoryNotFound()
-      throws Exception {
-    File mockDir = mock(File.class);
-    whenNew(File.class).withArguments(RESOURCE_BUNDLE_PATH).thenReturn(mockDir);
-    when(mockDir.exists()).thenReturn(false);
-
-    ResourceBundle fallbackBundle = mock(ResourceBundle.class);
-
-    mockStatic(ResourceBundle.class);
-    when(ResourceBundle.getBundle(eq(RESOURCE_BUNDLE_CLASSPATH), any(Locale.class)))
-        .thenReturn(fallbackBundle);
-
-    Map<String, Object> result = jasperTemplateService
-        .getLocaleBundleParameters("en");
-
-    assertEquals(2, result.size());
-    assertEquals(fallbackBundle, result.get(JRParameter.REPORT_RESOURCE_BUNDLE));
-    assertEquals(Locale.ENGLISH, result.get(JRParameter.REPORT_LOCALE));
-  }
-
-  @Test
-  public void getLocaleBundleShouldFallbackToInternalBundleWhenConfigBundleNotFound()
-      throws Exception {
-    File mockDir = mock(File.class);
-    whenNew(File.class).withArguments(RESOURCE_BUNDLE_PATH).thenReturn(mockDir);
-    when(mockDir.exists()).thenReturn(true);
-    when(mockDir.isDirectory()).thenReturn(true);
-    when(mockDir.toURI()).thenReturn(new java.net.URI(DUMMY_FILE_URI));
-
-    ResourceBundle fallbackBundle = mock(ResourceBundle.class);
-
-    mockStatic(ResourceBundle.class);
-
-    when(ResourceBundle.getBundle(eq(RESOURCE_BUNDLE_NAME), any(Locale.class),
-        any(URLClassLoader.class)))
-        .thenThrow(new MissingResourceException("Missing resource from config",
-            "ResourceBundle", RESOURCE_BUNDLE_KEY));
-
-    when(ResourceBundle.getBundle(eq(RESOURCE_BUNDLE_CLASSPATH), any(Locale.class)))
-        .thenReturn(fallbackBundle);
-
-    Map<String, Object> result = jasperTemplateService
-        .getLocaleBundleParameters("fr");
-
-    assertEquals(2, result.size());
-    assertEquals(fallbackBundle, result.get(JRParameter.REPORT_RESOURCE_BUNDLE));
-    assertEquals(new Locale.Builder().setLanguageTag("fr").build(),
-        result.get(JRParameter.REPORT_LOCALE));
-  }
-
-  @Test
-  public void getLocaleBundleShouldReturnEmptyMapIfTranslationBundleIsMissingFromDisk()
-      throws Exception {
-    File mockDir = mock(File.class);
-    whenNew(File.class).withArguments(RESOURCE_BUNDLE_PATH).thenReturn(mockDir);
-    when(mockDir.exists()).thenReturn(true);
-    when(mockDir.isDirectory()).thenReturn(true);
-    when(mockDir.toURI()).thenReturn(new java.net.URI(DUMMY_FILE_URI));
-
-    mockStatic(ResourceBundle.class);
-
-    when(ResourceBundle.getBundle(anyString(), any(Locale.class), any(URLClassLoader.class)))
-        .thenThrow(new MissingResourceException("Missing resource exception occurred",
-            "ResourceBundle", RESOURCE_BUNDLE_KEY));
-    assertTrue(jasperTemplateService.getLocaleBundleParameters("en").isEmpty());
-  }
-
-  @Test
-  public void getLocaleBundleShouldReturnMapWithBundleAndLocale() throws Exception {
-    // Mock the Config Directory
-    File mockDir = mock(File.class);
-    whenNew(File.class).withArguments(RESOURCE_BUNDLE_PATH).thenReturn(mockDir);
-    when(mockDir.exists()).thenReturn(true);
-    when(mockDir.isDirectory()).thenReturn(true);
-    when(mockDir.toURI()).thenReturn(new java.net.URI(DUMMY_FILE_URI));
-
-    ResourceBundle mockBundle = mock(ResourceBundle.class);
-    mockStatic(ResourceBundle.class);
-    when(ResourceBundle.getBundle(eq(RESOURCE_BUNDLE_NAME), any(Locale.class),
-        any(URLClassLoader.class))).thenReturn(mockBundle);
-
-    Map<String, Object> result = jasperTemplateService
-        .getLocaleBundleParameters("fr");
-
-    assertEquals(2, result.size());
-    assertEquals(mockBundle, result.get(JRParameter.REPORT_RESOURCE_BUNDLE));
-    assertEquals(new Locale.Builder().setLanguageTag("fr").build(),
-        result.get(JRParameter.REPORT_LOCALE));
-  }
-
-  @Test
-  public void getLocaleBundleShouldFallbackToEnglishForInvalidLocale() throws Exception {
-    File mockDir = mock(File.class);
-    whenNew(File.class).withArguments(RESOURCE_BUNDLE_PATH).thenReturn(mockDir);
-    when(mockDir.exists()).thenReturn(true);
-    when(mockDir.isDirectory()).thenReturn(true);
-    when(mockDir.toURI()).thenReturn(new java.net.URI(DUMMY_FILE_URI));
-
-    ResourceBundle mockBundle = mock(ResourceBundle.class);
-    mockStatic(ResourceBundle.class);
-    when(ResourceBundle.getBundle(eq(RESOURCE_BUNDLE_NAME), any(Locale.class),
-        any(URLClassLoader.class))).thenReturn(mockBundle);
-
-    Map<String, Object> result = jasperTemplateService
-        .getLocaleBundleParameters("invalid_locale");
-
-    assertEquals(Locale.ENGLISH, result.get(JRParameter.REPORT_LOCALE));
-  }
-
-  @Test
-  public void getLocaleBundleShouldFallBackToInternalWhenExternalBundleMissing()
-      throws Exception {
-    File mockDir = mock(File.class);
-    whenNew(File.class).withArguments(RESOURCE_BUNDLE_PATH).thenReturn(mockDir);
-    when(mockDir.exists()).thenReturn(true);
-    when(mockDir.isDirectory()).thenReturn(true);
-    when(mockDir.toURI()).thenReturn(new java.net.URI(DUMMY_FILE_URI));
-
-    mockStatic(ResourceBundle.class);
-    when(ResourceBundle.getBundle(eq(RESOURCE_BUNDLE_NAME), any(Locale.class),
-        any(URLClassLoader.class)))
-        .thenThrow(new MissingResourceException("Missing", RESOURCE_BUNDLE_NAME,
-            RESOURCE_BUNDLE_KEY));
-
-    when(ResourceBundle.getBundle(eq(RESOURCE_BUNDLE_CLASSPATH), any(Locale.class)))
-        .thenThrow(new MissingResourceException("Fallback missing", RESOURCE_BUNDLE_NAME,
-            RESOURCE_BUNDLE_KEY));
-
-    assertTrue(jasperTemplateService.getLocaleBundleParameters("en").isEmpty());
-  }
-
-  @Test
   public void loadReportWithByteArrayShouldReturnNullForEmptyArray() throws Exception {
     byte[] emptyData = new byte[0];
     JasperReport result = jasperTemplateService.loadReport(emptyData);
@@ -1336,5 +1170,36 @@ public class JasperTemplateServiceTest {
     final byte[] expectedData = os.toByteArray();
     os.close();
     return expectedData;
+  }
+
+  @Test
+  public void getLocaleBundleShouldReturnEmptyMapWhenProviderHasNoBundle() throws Exception {
+    given(translationBundleProvider.getBundle(any(Locale.class))).willReturn(null);
+
+    assertTrue(jasperTemplateService.getLocaleBundleParameters("en").isEmpty());
+  }
+
+  @Test
+  public void getLocaleBundleShouldReturnMapWithBundleAndLocale() throws Exception {
+    ResourceBundle mockBundle = mock(ResourceBundle.class);
+    given(translationBundleProvider.getBundle(any(Locale.class))).willReturn(mockBundle);
+
+    Map<String, Object> result = jasperTemplateService.getLocaleBundleParameters("fr");
+
+    assertEquals(2, result.size());
+    assertEquals(mockBundle, result.get(JRParameter.REPORT_RESOURCE_BUNDLE));
+    assertEquals(new Locale.Builder().setLanguageTag("fr").build(),
+        result.get(JRParameter.REPORT_LOCALE));
+  }
+
+  @Test
+  public void getLocaleBundleShouldFallbackToEnglishForInvalidLocale() throws Exception {
+    ResourceBundle mockBundle = mock(ResourceBundle.class);
+    given(translationBundleProvider.getBundle(any(Locale.class))).willReturn(mockBundle);
+
+    Map<String, Object> result =
+        jasperTemplateService.getLocaleBundleParameters("invalid@locale#string");
+
+    assertEquals(Locale.ENGLISH, result.get(JRParameter.REPORT_LOCALE));
   }
 }

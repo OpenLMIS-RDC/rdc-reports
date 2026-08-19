@@ -33,8 +33,6 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.ObjectOutputStream;
 import java.net.MalformedURLException;
-import java.net.URL;
-import java.net.URLClassLoader;
 import java.nio.file.Files;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -44,7 +42,6 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
-import java.util.MissingResourceException;
 import java.util.Optional;
 import java.util.Properties;
 import java.util.ResourceBundle;
@@ -68,6 +65,7 @@ import org.openlmis.report.exception.ReportingException;
 import org.openlmis.report.exception.ValidationMessageException;
 import org.openlmis.report.i18n.ReportCategoryMessageKeys;
 import org.openlmis.report.i18n.ReportImageMessageKeys;
+import org.openlmis.report.i18n.ReportTranslationBundleProvider;
 import org.openlmis.report.repository.JasperTemplateRepository;
 import org.openlmis.report.repository.ReportCategoryRepository;
 import org.openlmis.report.repository.ReportImageRepository;
@@ -85,6 +83,9 @@ public class JasperTemplateService {
   private static final String DEFAULT_REPORT_TYPE = "Consistency Report";
   private static final String[] ALLOWED_FILETYPES = {"jrxml"};
   private static final String CONFIG_PATH = "/config/reports/";
+
+  @Autowired
+  private ReportTranslationBundleProvider translationBundleProvider;
 
   @Autowired
   private JasperTemplateRepository jasperTemplateRepository;
@@ -225,7 +226,7 @@ public class JasperTemplateService {
     }
 
     Map<String, Object> parameters = new HashMap<>();
-    ResourceBundle bundle = loadResourceBundle(userLocale);
+    ResourceBundle bundle = translationBundleProvider.getBundle(userLocale);
 
     if (bundle != null) {
       parameters.put(JRParameter.REPORT_RESOURCE_BUNDLE, bundle);
@@ -233,36 +234,6 @@ public class JasperTemplateService {
     }
 
     return parameters;
-  }
-
-  /**
-   * Load translations resource bundle from shared config with fallback to internal translations
-   * bundle.
-   *
-   * @param locale the locale
-   * @return the resource bundle
-   */
-  private ResourceBundle loadResourceBundle(Locale locale) {
-    File resourceBundleDir = new File(CONFIG_PATH + "resourceBundles");
-
-    // Attempt to load from the config
-    if (resourceBundleDir.exists() && resourceBundleDir.isDirectory()) {
-      try {
-        URL[] urls = {resourceBundleDir.toURI().toURL()};
-        try (URLClassLoader externalLoader = new URLClassLoader(urls)) {
-          return ResourceBundle.getBundle("report_translations", locale, externalLoader);
-        }
-      } catch (IOException | MissingResourceException e) {
-        resourceBundleDir = null;
-      }
-    }
-
-    // Fallback to the internal Classpath
-    try {
-      return ResourceBundle.getBundle("resourceBundles/report_translations", locale);
-    } catch (MissingResourceException e) {
-      return null;
-    }
   }
 
   /**

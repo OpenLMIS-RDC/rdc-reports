@@ -1,6 +1,10 @@
 1.3.0-SNAPSHOT (WIP)
 ==================
 
+Improvements:
+* [ODRC-130](https://openlmis.atlassian.net/browse/ODRC-130) Native report translations aligned with core openlmis-report: shared ReportTranslationBundleProvider with deployment overrides, labels and page footers moved to the report.pattern/report.controls conventions, and the translation bundle synced with the Transifex source
+
+
 New functionality:
 * [MW-1449](https://openlmis.atlassian.net/browse/MW-1449): Ported the Superset guest token endpoint for embedded dashboards from core openlmis-report (SupersetService, guest-token endpoint gated by REPORTS_VIEW, embeddedUuid on dashboard reports).
 
