@@ -15,6 +15,8 @@
 	<property name="net.sf.jasperreports.export.csv.exclude.origin.band.1" value="pageHeader"/>
 	<property name="net.sf.jasperreports.export.csv.exclude.origin.band.2" value="pageFooter"/>
 	<property name="net.sf.jasperreports.export.csv.exclude.key.PaginationText"/>
+	<import value="java.time.LocalDate"/>
+	<import value="java.time.format.DateTimeFormatter"/>
 	<style name="MarkedExpiredProductDate" forecolor="#000000" pattern="">
 		<conditionalStyle>
 			<conditionExpression><![CDATA[($F{productExpiryDate} != null && new SimpleDateFormat("yyyy-MM-dd").parse($F{productExpiryDate}).before(new SimpleDateFormat("yyyy-MM-dd").parse($P{date}))) && $P{expiredProducts} == null]]></conditionExpression>
@@ -263,11 +265,11 @@ GROUP BY
 			</textField>
 			<textField>
 				<reportElement x="432" y="100" width="208" height="20" uuid="36f32e3f-b43e-458c-8724-9ea5571e0369"/>
-				<textFieldExpression><![CDATA[$P{date}]]></textFieldExpression>
+				<textFieldExpression><![CDATA[$P{date} == null ? null : DateTimeFormatter.ofPattern("dd-MM-yyyy").format(LocalDate.parse($P{date}))]]></textFieldExpression>
 			</textField>
 			<textField pattern="MMM d, yyyy">
 				<reportElement x="640" y="100" width="161" height="20" uuid="1a79bec9-bcf9-40b7-9530-86290dcd415f"/>
-				<textFieldExpression><![CDATA[new SimpleDateFormat("yyyy-MM-dd").format(new java.util.Date())]]></textFieldExpression>
+				<textFieldExpression><![CDATA[DateTimeFormatter.ofPattern("dd-MM-yyyy").format(LocalDate.now())]]></textFieldExpression>
 			</textField>
 			<staticText>
 				<reportElement x="230" y="80" width="202" height="20" uuid="dca5e26f-c56e-4405-b824-e7f5516e0a7e"/>
@@ -568,7 +570,7 @@ GROUP BY
 					<font isBold="false"/>
 					<paragraph lineSpacing="1_1_2"/>
 				</textElement>
-				<textFieldExpression><![CDATA[$F{productExpiryDate}]]></textFieldExpression>
+				<textFieldExpression><![CDATA[$F{productExpiryDate} == null ? null : DateTimeFormatter.ofPattern("dd-MM-yyyy").format(LocalDate.parse($F{productExpiryDate}))]]></textFieldExpression>
 			</textField>
 			<textField isBlankWhenNull="true">
 				<reportElement x="640" y="0" width="60" height="45" uuid="484c46c2-05e8-461f-8d10-d36048f6e909"/>

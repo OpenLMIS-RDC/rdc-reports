@@ -20,6 +20,8 @@
 	<property name="net.sf.jasperreports.export.csv.exclude.origin.report.5" value="*"/>
 	<property name="net.sf.jasperreports.export.csv.remove.empty.space.between.rows" value="true"/>
 	<property name="net.sf.jasperreports.export.csv.exclude.key.PaginationText"/>
+	<import value="java.time.LocalDate"/>
+	<import value="java.time.format.DateTimeFormatter"/>
 	<style name="BaseStyle" isDefault="true" fontName="DejaVu Sans" fontSize="10"/>
 	<parameter name="startDate" class="java.lang.String" nestedType="java.lang.String">
 		<property name="displayName" value="Start Date"/>
@@ -396,19 +398,19 @@ ORDER BY facilities.name, products.code]]>
 				<reportElement x="400" y="80" width="130" height="20" uuid="36f32e3f-b43e-458c-8724-9ea5571e0369">
 					<property name="com.jaspersoft.studio.unit.width" value="px"/>
 				</reportElement>
-				<textFieldExpression><![CDATA[$P{startDate}]]></textFieldExpression>
+				<textFieldExpression><![CDATA[$P{startDate} == null ? null : DateTimeFormatter.ofPattern("dd-MM-yyyy").format(LocalDate.parse($P{startDate}))]]></textFieldExpression>
 			</textField>
 			<textField>
 				<reportElement x="530" y="80" width="130" height="20" uuid="36f32e3f-b43e-458c-8724-9ea5571e0369">
 					<property name="com.jaspersoft.studio.unit.width" value="px"/>
 				</reportElement>
-				<textFieldExpression><![CDATA[$P{endDate}]]></textFieldExpression>
+				<textFieldExpression><![CDATA[$P{endDate} == null ? null : DateTimeFormatter.ofPattern("dd-MM-yyyy").format(LocalDate.parse($P{endDate}))]]></textFieldExpression>
 			</textField>
 			<textField pattern="MMM d, yyyy">
 				<reportElement x="660" y="80" width="130" height="20" uuid="1a79bec9-bcf9-40b7-9530-86290dcd415f">
 					<property name="com.jaspersoft.studio.unit.width" value="px"/>
 				</reportElement>
-				<textFieldExpression><![CDATA[new SimpleDateFormat("yyyy-MM-dd").format(new java.util.Date())]]></textFieldExpression>
+				<textFieldExpression><![CDATA[DateTimeFormatter.ofPattern("dd-MM-yyyy").format(LocalDate.now())]]></textFieldExpression>
 			</textField>
 		</band>
 	</pageHeader>

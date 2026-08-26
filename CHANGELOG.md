@@ -2,6 +2,7 @@
 ==================
 
 Improvements:
+* [ODRC-149](https://openlmis.atlassian.net/browse/ODRC-149) Change reports' date format to DD-MM-YYYY
 * [ODRC-130](https://openlmis.atlassian.net/browse/ODRC-130) Native report translations aligned with core openlmis-report: shared ReportTranslationBundleProvider with deployment overrides, labels and page footers moved to the report.pattern/report.controls conventions, and the translation bundle synced with the Transifex source
 
 

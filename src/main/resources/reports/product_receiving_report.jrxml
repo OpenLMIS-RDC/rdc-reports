@@ -20,6 +20,8 @@
 	<property name="net.sf.jasperreports.export.csv.exclude.origin.report.5" value="*"/>
 	<property name="net.sf.jasperreports.export.csv.remove.empty.space.between.rows" value="true"/>
 	<property name="net.sf.jasperreports.export.csv.exclude.key.PaginationText"/>
+	<import value="java.time.LocalDate"/>
+	<import value="java.time.format.DateTimeFormatter"/>
 	<style name="BaseStyle" isDefault="true" fontName="DejaVu Sans" fontSize="10"/>
 	<parameter name="startDate" class="java.lang.String" nestedType="java.lang.String">
 		<property name="displayName" value="Start Date"/>
@@ -239,7 +241,7 @@ ORDER BY
 			</textField>
 			<textField>
 				<reportElement x="210" y="92" width="202" height="12" uuid="36f32e3f-b43e-458c-8724-9ea5571e0369"/>
-				<textFieldExpression><![CDATA[new SimpleDateFormat("yyyy-MM-dd").format(new java.util.Date())]]></textFieldExpression>
+				<textFieldExpression><![CDATA[DateTimeFormatter.ofPattern("dd-MM-yyyy").format(LocalDate.now())]]></textFieldExpression>
 			</textField>
 			<textField>
 				<reportElement x="210" y="52" width="202" height="12" uuid="dca5e26f-c56e-4405-b824-e7f5516e0a7e"/>
@@ -272,7 +274,7 @@ ORDER BY
 			</textField>
 			<textField>
 				<reportElement x="412" y="92" width="208" height="12" uuid="56b8f2cf-83be-4d46-963f-628e79c7d982"/>
-				<textFieldExpression><![CDATA[$P{endDate}]]></textFieldExpression>
+				<textFieldExpression><![CDATA[$P{endDate} == null ? null : DateTimeFormatter.ofPattern("dd-MM-yyyy").format(LocalDate.parse($P{endDate}))]]></textFieldExpression>
 			</textField>
 			<textField>
 				<reportElement x="412" y="52" width="208" height="12" uuid="3e70bb85-477d-4fa2-ad24-2e03faaf30c8"/>
@@ -283,7 +285,7 @@ ORDER BY
 			</textField>
 			<textField>
 				<reportElement x="412" y="64" width="208" height="12" uuid="ef664079-f971-4d7b-b6db-7e68bf3f02fb"/>
-				<textFieldExpression><![CDATA[$P{startDate}]]></textFieldExpression>
+				<textFieldExpression><![CDATA[$P{startDate} == null ? null : DateTimeFormatter.ofPattern("dd-MM-yyyy").format(LocalDate.parse($P{startDate}))]]></textFieldExpression>
 			</textField>
 			<textField>
 				<reportElement x="1" y="52" width="208" height="12" uuid="1e0f211e-52e9-4eef-a063-af8e518c87f8"/>
@@ -681,7 +683,7 @@ ORDER BY
 					<font isBold="false"/>
 					<paragraph lineSpacing="1_1_2"/>
 				</textElement>
-				<textFieldExpression><![CDATA[$F{occurredDate}]]></textFieldExpression>
+				<textFieldExpression><![CDATA[$F{occurredDate} == null ? null : DateTimeFormatter.ofPattern("dd-MM-yyyy").format(LocalDate.parse($F{occurredDate}))]]></textFieldExpression>
 			</textField>
 			<textField isBlankWhenNull="true">
 				<reportElement x="740" y="0" width="60" height="45" uuid="f3560ac2-bf30-4bd9-a83f-0058308c73c9">
@@ -694,7 +696,7 @@ ORDER BY
 					<font isBold="false"/>
 					<paragraph lineSpacing="1_1_2"/>
 				</textElement>
-				<textFieldExpression><![CDATA[$F{productExpiryDate}]]></textFieldExpression>
+				<textFieldExpression><![CDATA[$F{productExpiryDate} == null ? null : DateTimeFormatter.ofPattern("dd-MM-yyyy").format(LocalDate.parse($F{productExpiryDate}))]]></textFieldExpression>
 			</textField>
 			<textField isBlankWhenNull="true">
 				<reportElement x="680" y="0" width="60" height="45" uuid="00a1f398-7117-46dd-9f5d-2c86b4544a7d">
@@ -708,7 +710,7 @@ ORDER BY
 					<font isBold="false"/>
 					<paragraph lineSpacing="1_1_2"/>
 				</textElement>
-				<textFieldExpression><![CDATA[$F{productManufactureDate}]]></textFieldExpression>
+				<textFieldExpression><![CDATA[$F{productManufactureDate} == null ? null : DateTimeFormatter.ofPattern("dd-MM-yyyy").format(LocalDate.parse($F{productManufactureDate}))]]></textFieldExpression>
 			</textField>
 			<textField isBlankWhenNull="true">
 				<reportElement x="620" y="0" width="60" height="45" uuid="cea544da-b825-4836-8bc4-37a7e4af4eea">
