@@ -33,11 +33,34 @@
 		<property name="required" value="true"/>
 		<parameterDescription><![CDATA[datepickers]]></parameterDescription>
 	</parameter>
+	<parameter name="geographicLevel" class="java.lang.String" nestedType="java.lang.String">
+		<property name="displayName" value="Geographic Level"/>
+		<property name="selectExpression" value="/api/geographicLevels"/>
+		<property name="selectProperty" value="levelNumber"/>
+		<property name="displayProperty" value="name"/>
+		<property name="required" value="false"/>
+	</parameter>
+	<parameter name="geographicZone" class="java.lang.String" nestedType="java.lang.String">
+		<property name="displayName" value="Geographic Zone"/>
+		<property name="selectExpression" value="/api/geographicZones"/>
+		<property name="selectProperty" value="id"/>
+		<property name="displayProperty" value="name"/>
+		<property name="required" value="false"/>
+		<property name="dependencies" value="geographicLevel:levelNumber:levelNumber"/>
+	</parameter>
+	<parameter name="facilityType" class="java.lang.String" nestedType="java.lang.String">
+		<property name="displayName" value="Facility Type"/>
+		<property name="selectExpression" value="/api/facilityTypes"/>
+		<property name="selectProperty" value="code"/>
+		<property name="displayProperty" value="name"/>
+		<property name="required" value="false"/>
+	</parameter>
 	<parameter name="facility" class="java.lang.String" nestedType="java.lang.String">
 		<property name="displayName" value="Facility"/>
-		<property name="selectExpression" value="/api/facilities"/>
+		<property name="selectExpression" value="/api/facilities?recurse=true"/>
 		<property name="selectProperty" value="name"/>
 		<property name="required" value="true"/>
+		<property name="dependencies" value="geographicZone:id:zoneId,facilityType:code:type"/>
 	</parameter>
 	<parameter name="program" class="java.lang.String" nestedType="java.lang.String">
 		<property name="displayName" value="Program"/>
@@ -59,6 +82,12 @@
 	<parameter name="headerTemplate" class="net.sf.jasperreports.engine.JasperReport" isForPrompting="false"/>
 	<queryString>
 		<![CDATA[WITH
+RECURSIVE findChildZones AS (
+    SELECT * FROM referencedata.geographic_zones WHERE id = $P{geographicZone}::uuid
+    UNION ALL
+    SELECT referencedata.geographic_zones.* FROM referencedata.geographic_zones
+    JOIN findChildZones ON findChildZones.id = referencedata.geographic_zones.parentId
+),
 latest_orderable_identifiers AS (
     SELECT DISTINCT ON (orderableid)
         orderableid,
@@ -115,6 +144,8 @@ JOIN stockmanagement.stock_cards AS stock_cards ON stock_cards.id =
     stock_card_line_items.stockcardid
 JOIN referencedata.facilities AS facilities ON facilities.id =
     stock_cards.facilityid
+JOIN referencedata.facility_types AS facilities_types ON facilities_types.id = facilities.typeid
+JOIN referencedata.geographic_zones AS zones ON zones.id = facilities.geographiczoneid
 JOIN referencedata.orderables AS products ON products.id =
     stock_cards.orderableid
 JOIN latest_orderable_identifiers AS orderable_identifiers ON
@@ -145,6 +176,8 @@ LEFT JOIN referencedata.orderable_display_categories AS product_categories ON
     product_categories.id = program_orderables.orderabledisplaycategoryid
 WHERE
     (facilities.name = $P{facility}::varchar OR $P{facility}::varchar IS NULL)
+    AND (facilities_types.code = $P{facilityType}::varchar OR $P{facilityType}::varchar IS NULL)
+    AND (zones.id IN (SELECT id FROM findChildZones) OR $P{geographicZone}::varchar IS NULL)
     AND (products.fullproductname = $P{product}::varchar OR $P{product}::varchar IS NULL)
     AND (programs.name = $P{program}::varchar OR $P{program}::varchar IS NULL)
     AND (
