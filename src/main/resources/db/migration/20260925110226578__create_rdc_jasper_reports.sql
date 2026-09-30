@@ -15,9 +15,9 @@ INSERT INTO report.template_parameters
 VALUES
     ('22bc6a4c-a553-4b9c-8cc2-fe3b5b5d13e5', '6b0568b1-0b15-471c-9387-502e00033cbd', 'startDate', 'Start Date', 'datepickers', NULL, NULL, NULL, true, 'java.lang.String'),
     ('c9f91542-2347-453c-8f84-2d3ebed3ee66', '6b0568b1-0b15-471c-9387-502e00033cbd', 'endDate', 'End Date', 'datepickers', NULL, NULL, NULL, true, 'java.lang.String'),
-    ('df349525-92b9-48bd-92cb-c421b8fa2994', '6b0568b1-0b15-471c-9387-502e00033cbd', 'geographicLevel', 'Geographic Level', NULL, '/api/geographicLevels', 'levelNumber', 'name', false, 'java.lang.String'),
-    ('16f7e985-3a13-4481-b1c9-840b7302dcd1', '6b0568b1-0b15-471c-9387-502e00033cbd', 'geographicZone', 'Geographic Zone', NULL, '/api/geographicZones', 'id', 'name', false, 'java.lang.String'),
-    ('6be6f1ef-5f4d-43b5-871f-5550449c86cd', '6b0568b1-0b15-471c-9387-502e00033cbd', 'facilityType', 'Facility Type', NULL, '/api/facilityTypes', 'code', 'name', false, 'java.lang.String'),
+    ('df349525-92b9-48bd-92cb-c421b8fa2994', '6b0568b1-0b15-471c-9387-502e00033cbd', 'geographicLevel', 'Geographic Level', NULL, '/api/geographicLevels', 'name', 'name', false, 'java.lang.String'),
+    ('16f7e985-3a13-4481-b1c9-840b7302dcd1', '6b0568b1-0b15-471c-9387-502e00033cbd', 'geographicZone', 'Geographic Zone', NULL, '/api/geographicZones', 'name', 'name', false, 'java.lang.String'),
+    ('6be6f1ef-5f4d-43b5-871f-5550449c86cd', '6b0568b1-0b15-471c-9387-502e00033cbd', 'facilityType', 'Facility Type', NULL, '/api/facilityTypes', 'name', 'name', false, 'java.lang.String'),
     ('a172099f-7351-4832-a8b3-8b503c45d7b1', '6b0568b1-0b15-471c-9387-502e00033cbd', 'facility', 'Facility', NULL, '/api/facilities?recurse=true', 'name', NULL, true, 'java.lang.String'),
     ('f7e74ea4-1fef-43eb-9a6e-113080158e68', '6b0568b1-0b15-471c-9387-502e00033cbd', 'program', 'Program', NULL, '/api/programs', 'name', NULL, true, 'java.lang.String'),
     ('024b260e-7535-46ec-9f18-5711ddb480bf', '6b0568b1-0b15-471c-9387-502e00033cbd', 'product', 'Product', NULL, '/api/orderables', 'fullProductName', NULL, false, 'java.lang.String');
@@ -39,9 +39,9 @@ INSERT INTO report.template_parameters
 VALUES
     ('4c6e461a-ae6e-48dc-b215-4c62170d073b', 'deec25fc-99f7-4f22-8a8e-b925c067bffe', 'startDate', 'Start Date', 'datepickers', NULL, NULL, NULL, true, 'java.lang.String'),
     ('f5f316b6-d071-4a62-a300-25bd318f7510', 'deec25fc-99f7-4f22-8a8e-b925c067bffe', 'endDate', 'End Date', 'datepickers', NULL, NULL, NULL, true, 'java.lang.String'),
-    ('944918de-dbc8-458e-a00f-203843aa7256', 'deec25fc-99f7-4f22-8a8e-b925c067bffe', 'geographicLevel', 'Geographic Level', NULL, '/api/geographicLevels', 'levelNumber', 'name', false, 'java.lang.String'),
-    ('603ae871-0d9e-4081-987a-7bf8ef436ccf', 'deec25fc-99f7-4f22-8a8e-b925c067bffe', 'geographicZone', 'Geographic Zone', NULL, '/api/geographicZones', 'id', 'name', false, 'java.lang.String'),
-    ('2dd15c50-9da3-40bc-ab93-d171071d5636', 'deec25fc-99f7-4f22-8a8e-b925c067bffe', 'facilityType', 'Facility Type', NULL, '/api/facilityTypes', 'code', 'name', false, 'java.lang.String'),
+    ('944918de-dbc8-458e-a00f-203843aa7256', 'deec25fc-99f7-4f22-8a8e-b925c067bffe', 'geographicLevel', 'Geographic Level', NULL, '/api/geographicLevels', 'name', 'name', false, 'java.lang.String'),
+    ('603ae871-0d9e-4081-987a-7bf8ef436ccf', 'deec25fc-99f7-4f22-8a8e-b925c067bffe', 'geographicZone', 'Geographic Zone', NULL, '/api/geographicZones', 'name', 'name', false, 'java.lang.String'),
+    ('2dd15c50-9da3-40bc-ab93-d171071d5636', 'deec25fc-99f7-4f22-8a8e-b925c067bffe', 'facilityType', 'Facility Type', NULL, '/api/facilityTypes', 'name', 'name', false, 'java.lang.String'),
     ('6d7aab1e-5210-4e29-b463-7305110e8a17', 'deec25fc-99f7-4f22-8a8e-b925c067bffe', 'facility', 'Facility', NULL, '/api/facilities?recurse=true', 'name', NULL, true, 'java.lang.String'),
     ('378ec23c-3613-485e-8b23-56cdb06ac973', 'deec25fc-99f7-4f22-8a8e-b925c067bffe', 'program', 'Program', NULL, '/api/programs', 'name', NULL, true, 'java.lang.String'),
     ('4c9da215-ac09-43ec-a6fa-643a0f243ad3', 'deec25fc-99f7-4f22-8a8e-b925c067bffe', 'product', 'Product', NULL, '/api/orderables', 'fullProductName', NULL, false, 'java.lang.String');
@@ -62,9 +62,9 @@ INSERT INTO report.template_parameters
      selectexpression, selectproperty, displayproperty, required, datatype)
 VALUES
     ('a09482d1-945f-47fa-9974-b2290024e64a', '2d68197d-6718-4709-be56-8142546ed6ce', 'date', 'Date', 'datepickers', NULL, NULL, NULL, true, 'java.lang.String'),
-    ('177d9c89-4394-46c2-b866-22a9bd6b07f2', '2d68197d-6718-4709-be56-8142546ed6ce', 'geographicLevel', 'Geographic Level', NULL, '/api/geographicLevels', 'levelNumber', 'name', false, 'java.lang.String'),
-    ('3d660298-f162-4444-a2f9-7f3cdbc15335', '2d68197d-6718-4709-be56-8142546ed6ce', 'geographicZone', 'Geographic Zone', NULL, '/api/geographicZones', 'id', 'name', false, 'java.lang.String'),
-    ('82587b72-26fb-43e0-b71b-c565523a4802', '2d68197d-6718-4709-be56-8142546ed6ce', 'facilityType', 'Facility Type', NULL, '/api/facilityTypes', 'code', 'name', false, 'java.lang.String'),
+    ('177d9c89-4394-46c2-b866-22a9bd6b07f2', '2d68197d-6718-4709-be56-8142546ed6ce', 'geographicLevel', 'Geographic Level', NULL, '/api/geographicLevels', 'name', 'name', false, 'java.lang.String'),
+    ('3d660298-f162-4444-a2f9-7f3cdbc15335', '2d68197d-6718-4709-be56-8142546ed6ce', 'geographicZone', 'Geographic Zone', NULL, '/api/geographicZones', 'name', 'name', false, 'java.lang.String'),
+    ('82587b72-26fb-43e0-b71b-c565523a4802', '2d68197d-6718-4709-be56-8142546ed6ce', 'facilityType', 'Facility Type', NULL, '/api/facilityTypes', 'name', 'name', false, 'java.lang.String'),
     ('d3df3e06-3960-4891-9d74-863f5931a3e6', '2d68197d-6718-4709-be56-8142546ed6ce', 'facility', 'Facility', NULL, '/api/facilities?recurse=true', 'name', NULL, false, 'java.lang.String'),
     ('a9781330-470a-488d-bf81-e623d14bcb20', '2d68197d-6718-4709-be56-8142546ed6ce', 'program', 'Program', NULL, '/api/programs', 'name', NULL, false, 'java.lang.String');
 
