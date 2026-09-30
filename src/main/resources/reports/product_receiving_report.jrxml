@@ -83,10 +83,18 @@
 	<queryString>
 		<![CDATA[WITH
 RECURSIVE findChildZones AS (
-    SELECT * FROM referencedata.geographic_zones WHERE id = $P{geographicZone}::uuid
+    SELECT * FROM referencedata.geographic_zones WHERE name = $P{geographicZone}::varchar
     UNION ALL
     SELECT referencedata.geographic_zones.* FROM referencedata.geographic_zones
     JOIN findChildZones ON findChildZones.id = referencedata.geographic_zones.parentId
+),
+findLevelZones AS (
+    SELECT gz.id FROM referencedata.geographic_zones gz
+    JOIN referencedata.geographic_levels gl ON gl.id = gz.levelid
+    WHERE gl.name = $P{geographicLevel}::varchar
+    UNION ALL
+    SELECT c.id FROM referencedata.geographic_zones c
+    JOIN findLevelZones p ON p.id = c.parentid
 ),
 latest_orderable_identifiers AS (
     SELECT DISTINCT ON (orderableid)
@@ -176,8 +184,10 @@ LEFT JOIN referencedata.orderable_display_categories AS product_categories ON
     product_categories.id = program_orderables.orderabledisplaycategoryid
 WHERE
     (facilities.name = $P{facility}::varchar OR $P{facility}::varchar IS NULL)
-    AND (facilities_types.code = $P{facilityType}::varchar OR $P{facilityType}::varchar IS NULL)
+    AND (facilities_types.name = $P{facilityType}::varchar OR $P{facilityType}::varchar IS NULL)
     AND (zones.id IN (SELECT id FROM findChildZones) OR $P{geographicZone}::varchar IS NULL)
+    AND (zones.id IN (SELECT id FROM findLevelZones)
+         OR $P{geographicLevel}::varchar IS NULL)
     AND (products.fullproductname = $P{product}::varchar OR $P{product}::varchar IS NULL)
     AND (programs.name = $P{program}::varchar OR $P{program}::varchar IS NULL)
     AND (
@@ -270,7 +280,7 @@ ORDER BY
 			</textField>
 			<textField>
 				<reportElement x="1" y="64" width="208" height="12" uuid="a8565621-bd19-4b76-bd5e-280c405039c6"/>
-				<textFieldExpression><![CDATA[$P{facility}]]></textFieldExpression>
+				<textFieldExpression><![CDATA[$P{facility} != null ? $P{facility} : ($P{facilityType} != null ? $P{facilityType} : "All")]]></textFieldExpression>
 			</textField>
 			<textField>
 				<reportElement x="210" y="92" width="202" height="12" uuid="36f32e3f-b43e-458c-8724-9ea5571e0369"/>
@@ -325,7 +335,16 @@ ORDER BY
 				<textElement textAlignment="Left" verticalAlignment="Middle">
 					<font size="10" isBold="true"/>
 				</textElement>
-				<textFieldExpression><![CDATA[msg($R{report.pattern.label}, $R{report.header.facility})]]></textFieldExpression>
+				<textFieldExpression><![CDATA[msg($R{report.pattern.label}, $P{facility} == null && $P{facilityType} != null ? $R{report.header.facilityType} : $R{report.header.facility})]]></textFieldExpression>
+			</textField>
+			<textField isBlankWhenNull="true">
+				<reportElement x="620" y="52" width="181" height="12" uuid="b2c3d4e5-0000-4000-8000-00000009201"/>
+				<textElement><font isBold="true"/></textElement>
+				<textFieldExpression><![CDATA[msg($R{report.pattern.label}, $P{geographicLevel} == null && $P{geographicZone} != null ? $R{report.header.geographicZone} : $R{report.header.geographicLevel})]]></textFieldExpression>
+			</textField>
+			<textField isBlankWhenNull="true">
+				<reportElement x="620" y="64" width="181" height="12" uuid="b2c3d4e5-0000-4000-8000-00000009202"/>
+				<textFieldExpression><![CDATA[$P{geographicLevel} != null ? $P{geographicLevel} : ($P{geographicZone} != null ? $P{geographicZone} : "All")]]></textFieldExpression>
 			</textField>
 		</band>
 	</pageHeader>
