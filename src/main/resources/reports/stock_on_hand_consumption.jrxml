@@ -284,35 +284,35 @@ ORDER BY facilities.name, products.code, lots.lotCode]]>
 					<pen lineWidth="0.0"/>
 				</graphicElement>
 			</rectangle>
-			<textField>
+			<textField isStretchWithOverflow="true">
 				<reportElement x="0" y="10" width="800" height="34" forecolor="#FFFFFF" uuid="0e3cc6fc-7fea-4050-a800-2f5beff70890"/>
 				<textElement textAlignment="Center" verticalAlignment="Middle">
 					<font size="24" isBold="true"/>
 				</textElement>
 				<textFieldExpression><![CDATA[$R{report.title.stockOnHand}]]></textFieldExpression>
 			</textField>
-			<textField>
+			<textField isStretchWithOverflow="true">
 				<reportElement x="0" y="55" width="190" height="20" uuid="c99c8f1c-d3d3-4020-8541-2da7e1a48466"/>
 				<textElement textAlignment="Left" verticalAlignment="Middle">
 					<font isBold="true"/>
 				</textElement>
 				<textFieldExpression><![CDATA[msg($R{report.pattern.label}, $P{facility} == null && $P{facilityType} != null ? $R{report.header.facilityType} : $R{report.header.facility})]]></textFieldExpression>
 			</textField>
-			<textField>
+			<textField isStretchWithOverflow="true">
 				<reportElement x="190" y="55" width="170" height="20" uuid="dca5e26f-c56e-4405-b824-e7f5516e0a7e"/>
 				<textElement textAlignment="Left" verticalAlignment="Middle">
 					<font size="10" isBold="true"/>
 				</textElement>
 				<textFieldExpression><![CDATA[msg($R{report.pattern.label}, $R{report.header.program})]]></textFieldExpression>
 			</textField>
-			<textField>
+			<textField isStretchWithOverflow="true">
 				<reportElement x="530" y="55" width="130" height="20" uuid="48e7b132-74de-44e8-9a1f-5ab8e86adeb5"/>
 				<textElement textAlignment="Left" verticalAlignment="Middle">
 					<font size="10" isBold="true"/>
 				</textElement>
 				<textFieldExpression><![CDATA[msg($R{report.pattern.label}, $R{report.header.stockDate})]]></textFieldExpression>
 			</textField>
-			<textField>
+			<textField isStretchWithOverflow="true">
 				<reportElement key="" x="660" y="55" width="141" height="20" uuid="4b505859-702c-4523-b9ee-567234bef054">
 					<property name="com.jaspersoft.studio.unit.width" value="pixel"/>
 				</reportElement>
@@ -321,30 +321,30 @@ ORDER BY facilities.name, products.code, lots.lotCode]]>
 				</textElement>
 				<textFieldExpression><![CDATA[msg($R{report.pattern.label}, $R{report.header.reportDate})]]></textFieldExpression>
 			</textField>
-			<textField>
+			<textField isStretchWithOverflow="true">
 				<reportElement x="0" y="80" width="190" height="20" uuid="a8565621-bd19-4b76-bd5e-280c405039c6"/>
 				<textFieldExpression><![CDATA[$P{facility} != null ? $P{facility} : ($P{facilityType} != null ? $P{facilityType} : "All")]]></textFieldExpression>
 			</textField>
-			<textField>
+			<textField isStretchWithOverflow="true">
 				<reportElement x="190" y="80" width="170" height="20" uuid="c88caf12-452e-4beb-846a-faadd85f251e"/>
 				<textFieldExpression><![CDATA[$P{program} != null ? $P{program} : "All"]]></textFieldExpression>
 			</textField>
-			<textField>
+			<textField isStretchWithOverflow="true">
 				<reportElement x="530" y="80" width="130" height="20" uuid="36f32e3f-b43e-458c-8724-9ea5571e0369"/>
 				<textFieldExpression><![CDATA[$P{date}]]></textFieldExpression>
 			</textField>
-			<textField pattern="MMM d, yyyy">
+			<textField isStretchWithOverflow="true" pattern="MMM d, yyyy">
 				<reportElement x="660" y="80" width="141" height="20" uuid="1a79bec9-bcf9-40b7-9530-86290dcd415f"/>
 				<textFieldExpression><![CDATA[new SimpleDateFormat("yyyy-MM-dd").format(new java.util.Date())]]></textFieldExpression>
 			</textField>
-			<textField isBlankWhenNull="true">
+			<textField isStretchWithOverflow="true" isBlankWhenNull="true">
 				<reportElement x="360" y="55" width="170" height="20" uuid="a1b2c3d4-0000-4000-8000-000000007301"/>
 				<textElement><font isBold="true"/></textElement>
-				<textFieldExpression><![CDATA[msg($R{report.pattern.label}, $P{geographicLevel} == null && $P{geographicZone} != null ? $R{report.header.geographicZone} : $R{report.header.geographicLevel})]]></textFieldExpression>
+				<textFieldExpression><![CDATA[msg($R{report.pattern.label}, $P{geographicZone} != null ? $R{report.header.geographicZone} : $R{report.header.geographicLevel})]]></textFieldExpression>
 			</textField>
-			<textField isBlankWhenNull="true">
+			<textField isStretchWithOverflow="true" isBlankWhenNull="true">
 				<reportElement x="360" y="80" width="170" height="20" uuid="a1b2c3d4-0000-4000-8000-000000007302"/>
-				<textFieldExpression><![CDATA[$P{geographicLevel} != null ? $P{geographicLevel} : ($P{geographicZone} != null ? $P{geographicZone} : "All")]]></textFieldExpression>
+				<textFieldExpression><![CDATA[$P{geographicZone} != null ? $P{geographicZone} : ($P{geographicLevel} != null ? $P{geographicLevel} : "All")]]></textFieldExpression>
 			</textField>
 		</band>
 	</pageHeader>
