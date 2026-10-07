@@ -1,6 +1,7 @@
 -- RDC Proof of Delivery printout (src/main/resources/reports/proof_of_delivery.jrxml), with the shipped quantity
 -- in packs and in doses. Hidden template: the PoD view in rdc-ui prints it with the proofOfDeliveryId parameter.
--- The query checks the core PoD view rights for the current user, so the template has no required rights.
+-- Calling it requires PODS_VIEW. The query also checks the core PoD view rights for the PoD itself, because the
+-- required right is checked without a facility or program.
 --
 -- Report id:
 --   Proof of Delivery    f65aa88d-c82c-4db3-bb38-d8f0051b4816
@@ -12,3 +13,6 @@ INSERT INTO report.template_parameters
      selectexpression, selectproperty, displayproperty, required, datatype)
 VALUES
     ('bdb49084-80a0-4317-a854-bf0f2d0efd88', 'f65aa88d-c82c-4db3-bb38-d8f0051b4816', 'proofOfDeliveryId', 'Proof of Delivery ID', NULL, NULL, NULL, NULL, true, 'java.lang.String');
+
+INSERT INTO report.jaspertemplate_requiredrights (jaspertemplateid, requiredrights)
+VALUES ('f65aa88d-c82c-4db3-bb38-d8f0051b4816', 'PODS_VIEW');
