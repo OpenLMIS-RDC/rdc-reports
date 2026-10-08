@@ -3,7 +3,11 @@
 <!-- RDC copy of the core fulfillment Proof of Delivery print template
      (openlmis-fulfillment v9.4.0, src/main/resources/jasperTemplates/proofOfDelivery.jrxml).
      Differences: shipped quantity in packs and in doses, column widths that fit the RDC labels,
-     header cells that grow together, and the core PoD view rights checked in the query. -->
+     header cells that grow together with 3 px of vertical padding, and the title pattern key
+     report.title.proofOfDeliveryForProgram (the RDC bundles' proofOfDeliveryFor has no {0}).
+     The report service fills it in place of the core template that fulfillment sends to
+     /api/reports/generate, after fulfillment has checked the PoD view rights, so it takes the same
+     parameters as the core template. -->
 <jasperReport xmlns="http://jasperreports.sourceforge.net/jasperreports" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://jasperreports.sourceforge.net/jasperreports http://jasperreports.sourceforge.net/xsd/jasperreport.xsd" name="proofOfDelivery" pageWidth="842" pageHeight="595" orientation="Landscape" whenNoDataType="AllSectionsNoDetail" columnWidth="802" leftMargin="20" rightMargin="20" topMargin="20" bottomMargin="20" whenResourceMissingType="Empty" uuid="c9b88bba-e685-4f37-89f1-8175e056a730">
 	<property name="com.jaspersoft.studio.data.sql.tables" value=""/>
 	<import value="java.time.ZonedDateTime"/>
@@ -11,12 +15,8 @@
 	<import value="java.time.format.DateTimeFormatter"/>
 	<import value="java.text.DecimalFormat"/>
 	<import value="java.time.ZoneId"/>
-	<parameter name="proofOfDeliveryId">
+	<parameter name="id">
 		<property name="displayName" value="Proof of Delivery"/>
-	</parameter>
-	<parameter name="userId" class="java.lang.String" isForPrompting="false">
-		<property name="displayName" value="ID of the currently authenticated user - should not be in template parameters"/>
-		<property name="required" value="false"/>
 	</parameter>
 	<parameter name="decimalFormat" class="java.text.DecimalFormat" isForPrompting="false">
 		<property name="displayName" value="DecimalFormat"/>
@@ -87,14 +87,7 @@ left join referencedata.lots lot on pod_li.lotid = lot.id
 left join stockmanagement.stock_card_line_item_reasons rejection_reason on rejection_reason.id = pod_li.rejectionreasonid
 left join referencedata.orderables order_orderable on order_orderable.id = order_li.orderableid
   and order_orderable.versionnumber = order_li.orderableversionnumber
-where pod.id = $P{proofOfDeliveryId}::uuid
-  and exists (
-    select 1
-    from referencedata.right_assignments ra
-    where ra.userid = $P{userId}::uuid
-      and ((ra.rightname in ('PODS_MANAGE', 'PODS_VIEW')
-          and ra.facilityid = ord.receivingfacilityid and ra.programid = ord.programid)
-        or (ra.rightname = 'SHIPMENTS_EDIT' and ra.facilityid = ord.supplyingfacilityid)))
+where pod.id = $P{id}::uuid
 order by orderProductName, productName, lotCode desc]]>
 	</queryString>
 	<field name="programname"/>
@@ -210,7 +203,7 @@ order by orderProductName, productName, lotCode desc]]>
 $P{decimalFormat}.format($F{quantityordered}).toString() : ""]]></textFieldExpression>
 				</textField>
 				<textField isStretchWithOverflow="true" isBlankWhenNull="true">
-					<reportElement stretchType="RelativeToTallestObject" mode="Opaque" x="642" y="0" width="76" height="20" backcolor="#F0F0F0" uuid="fee7ae94-a0b2-4ffe-84d0-9624f2b76451">
+					<reportElement stretchType="RelativeToTallestObject" mode="Opaque" x="650" y="0" width="76" height="20" backcolor="#F0F0F0" uuid="fee7ae94-a0b2-4ffe-84d0-9624f2b76451">
 						<property name="com.jaspersoft.studio.unit.width" value="px"/>
 					</reportElement>
 					<box topPadding="2" leftPadding="4" bottomPadding="2">
@@ -223,7 +216,7 @@ $P{decimalFormat}.format($F{quantityordered}).toString() : ""]]></textFieldExpre
 					<textElement verticalAlignment="Middle"/>
 				</textField>
 				<textField isStretchWithOverflow="true" isBlankWhenNull="true">
-					<reportElement stretchType="RelativeToTallestObject" mode="Opaque" x="472" y="0" width="60" height="20" backcolor="#F0F0F0" uuid="9e8bffab-997f-4209-a101-3ab9ca042971">
+					<reportElement stretchType="RelativeToTallestObject" mode="Opaque" x="480" y="0" width="60" height="20" backcolor="#F0F0F0" uuid="9e8bffab-997f-4209-a101-3ab9ca042971">
 						<property name="com.jaspersoft.studio.unit.width" value="px"/>
 					</reportElement>
 					<box topPadding="2" leftPadding="4" bottomPadding="2">
@@ -249,7 +242,7 @@ $P{decimalFormat}.format($F{quantityordered}).toString() : ""]]></textFieldExpre
 					<textElement verticalAlignment="Middle"/>
 				</textField>
 				<textField isStretchWithOverflow="true" isBlankWhenNull="true">
-					<reportElement stretchType="RelativeToTallestObject" mode="Opaque" x="334" y="0" width="66" height="20" backcolor="#F0F0F0" uuid="e5be2be6-68d3-43e5-9186-7992a9e9dd6a">
+					<reportElement stretchType="RelativeToTallestObject" mode="Opaque" x="334" y="0" width="66" height="20" backcolor="#F0F0F0" uuid="a5202271-2d86-5d70-b2e3-19ab1c7df772">
 						<property name="com.jaspersoft.studio.unit.width" value="px"/>
 					</reportElement>
 					<box topPadding="2" leftPadding="4" bottomPadding="2">
@@ -262,7 +255,7 @@ $P{decimalFormat}.format($F{quantityordered}).toString() : ""]]></textFieldExpre
 					<textElement verticalAlignment="Middle"/>
 				</textField>
 				<textField isStretchWithOverflow="true" isBlankWhenNull="true">
-					<reportElement stretchType="RelativeToTallestObject" mode="Opaque" x="400" y="0" width="72" height="20" backcolor="#F0F0F0" uuid="76569e5e-d124-4874-8df6-e094b7548038">
+					<reportElement stretchType="RelativeToTallestObject" mode="Opaque" x="400" y="0" width="80" height="20" backcolor="#F0F0F0" uuid="76569e5e-d124-4874-8df6-e094b7548038">
 						<property name="com.jaspersoft.studio.unit.width" value="px"/>
 					</reportElement>
 					<box topPadding="2" leftPadding="4" bottomPadding="2">
@@ -275,7 +268,7 @@ $P{decimalFormat}.format($F{quantityordered}).toString() : ""]]></textFieldExpre
 					<textElement verticalAlignment="Middle"/>
 				</textField>
 				<textField isStretchWithOverflow="true" isBlankWhenNull="true">
-					<reportElement stretchType="RelativeToTallestObject" mode="Opaque" x="584" y="0" width="58" height="20" backcolor="#F0F0F0" uuid="ea79e84c-b4a2-4bf3-8c54-fa8a16441971">
+					<reportElement stretchType="RelativeToTallestObject" mode="Opaque" x="592" y="0" width="58" height="20" backcolor="#F0F0F0" uuid="ea79e84c-b4a2-4bf3-8c54-fa8a16441971">
 						<property name="com.jaspersoft.studio.unit.width" value="px"/>
 					</reportElement>
 					<box topPadding="2" leftPadding="4" bottomPadding="2">
@@ -288,7 +281,7 @@ $P{decimalFormat}.format($F{quantityordered}).toString() : ""]]></textFieldExpre
 					<textElement verticalAlignment="Middle"/>
 				</textField>
 				<textField isStretchWithOverflow="true" isBlankWhenNull="true">
-					<reportElement stretchType="RelativeToTallestObject" mode="Opaque" x="718" y="0" width="82" height="20" backcolor="#F0F0F0" uuid="adcf989f-12f8-43b1-b484-2d9a58168a65">
+					<reportElement stretchType="RelativeToTallestObject" mode="Opaque" x="726" y="0" width="74" height="20" backcolor="#F0F0F0" uuid="adcf989f-12f8-43b1-b484-2d9a58168a65">
 						<property name="com.jaspersoft.studio.unit.width" value="px"/>
 						<property name="com.jaspersoft.studio.unit.x" value="px"/>
 					</reportElement>
@@ -302,7 +295,7 @@ $P{decimalFormat}.format($F{quantityordered}).toString() : ""]]></textFieldExpre
 					<textElement verticalAlignment="Middle"/>
 				</textField>
 				<textField isStretchWithOverflow="true" isBlankWhenNull="true">
-					<reportElement stretchType="RelativeToTallestObject" mode="Opaque" x="532" y="0" width="52" height="20" backcolor="#F0F0F0" uuid="8784645e-f6c5-4f27-920e-e54232b9ebfc">
+					<reportElement stretchType="RelativeToTallestObject" mode="Opaque" x="540" y="0" width="52" height="20" backcolor="#F0F0F0" uuid="8784645e-f6c5-4f27-920e-e54232b9ebfc">
 						<property name="com.jaspersoft.studio.unit.width" value="px"/>
 					</reportElement>
 					<box topPadding="2" leftPadding="4" bottomPadding="2">
@@ -365,7 +358,7 @@ $P{decimalFormat}.format($F{quantityordered}).toString() : ""]]></textFieldExpre
 					<textElement verticalAlignment="Middle"/>
 				</textField>
 				<textField isStretchWithOverflow="true" isBlankWhenNull="true">
-					<reportElement stretchType="RelativeToTallestObject" x="718" y="0" width="82" height="20" uuid="4cbc73d5-4ab3-433c-a7df-780698f0422f">
+					<reportElement stretchType="RelativeToTallestObject" x="726" y="0" width="74" height="20" uuid="4cbc73d5-4ab3-433c-a7df-780698f0422f">
 						<property name="com.jaspersoft.studio.unit.width" value="px"/>
 						<property name="com.jaspersoft.studio.unit.x" value="px"/>
 					</reportElement>
@@ -379,7 +372,7 @@ $P{decimalFormat}.format($F{quantityordered}).toString() : ""]]></textFieldExpre
 					<textElement verticalAlignment="Middle"/>
 				</textField>
 				<textField isStretchWithOverflow="true" isBlankWhenNull="true">
-					<reportElement stretchType="RelativeToTallestObject" x="400" y="0" width="72" height="20" uuid="2caacd83-50f0-4e39-b2d8-21f28c1c32c2">
+					<reportElement stretchType="RelativeToTallestObject" x="400" y="0" width="80" height="20" uuid="2caacd83-50f0-4e39-b2d8-21f28c1c32c2">
 						<property name="com.jaspersoft.studio.unit.width" value="px"/>
 					</reportElement>
 					<box topPadding="2" leftPadding="4" bottomPadding="2">
@@ -392,7 +385,7 @@ $P{decimalFormat}.format($F{quantityordered}).toString() : ""]]></textFieldExpre
 					<textElement verticalAlignment="Middle"/>
 				</textField>
 				<textField isStretchWithOverflow="true" isBlankWhenNull="true">
-					<reportElement stretchType="RelativeToTallestObject" x="472" y="0" width="60" height="20" uuid="cf36e6c0-77a8-4bd6-b4d3-87f3c845f09a">
+					<reportElement stretchType="RelativeToTallestObject" x="480" y="0" width="60" height="20" uuid="cf36e6c0-77a8-4bd6-b4d3-87f3c845f09a">
 						<property name="com.jaspersoft.studio.unit.width" value="px"/>
 					</reportElement>
 					<box topPadding="2" leftPadding="4" bottomPadding="2">
@@ -405,7 +398,7 @@ $P{decimalFormat}.format($F{quantityordered}).toString() : ""]]></textFieldExpre
 					<textElement verticalAlignment="Middle"/>
 				</textField>
 				<textField isStretchWithOverflow="true" isBlankWhenNull="true">
-					<reportElement stretchType="RelativeToTallestObject" x="642" y="0" width="76" height="20" uuid="e8c7bf10-e48a-4cf3-860d-e00e9c58b9bc">
+					<reportElement stretchType="RelativeToTallestObject" x="650" y="0" width="76" height="20" uuid="e8c7bf10-e48a-4cf3-860d-e00e9c58b9bc">
 						<property name="com.jaspersoft.studio.unit.width" value="px"/>
 					</reportElement>
 					<box topPadding="2" leftPadding="4" bottomPadding="2">
@@ -418,7 +411,7 @@ $P{decimalFormat}.format($F{quantityordered}).toString() : ""]]></textFieldExpre
 					<textElement verticalAlignment="Middle"/>
 				</textField>
 				<textField isStretchWithOverflow="true" isBlankWhenNull="true">
-					<reportElement stretchType="RelativeToTallestObject" x="584" y="0" width="58" height="20" uuid="a830c58b-44c0-445a-8d71-748836d219d4">
+					<reportElement stretchType="RelativeToTallestObject" x="592" y="0" width="58" height="20" uuid="a830c58b-44c0-445a-8d71-748836d219d4">
 						<property name="com.jaspersoft.studio.unit.width" value="px"/>
 					</reportElement>
 					<box topPadding="2" leftPadding="4" bottomPadding="2">
@@ -444,7 +437,7 @@ $P{decimalFormat}.format($F{quantityordered}).toString() : ""]]></textFieldExpre
 					<textElement verticalAlignment="Middle"/>
 				</textField>
 				<textField isStretchWithOverflow="true" isBlankWhenNull="true">
-					<reportElement stretchType="RelativeToTallestObject" x="334" y="0" width="66" height="20" uuid="01ab0482-27ce-469c-9bed-ab87ad1533df">
+					<reportElement stretchType="RelativeToTallestObject" x="334" y="0" width="66" height="20" uuid="8dcd169a-cd74-51f6-ab33-37236d760553">
 						<property name="com.jaspersoft.studio.unit.width" value="px"/>
 					</reportElement>
 					<box topPadding="2" leftPadding="4" bottomPadding="2">
@@ -457,7 +450,7 @@ $P{decimalFormat}.format($F{quantityordered}).toString() : ""]]></textFieldExpre
 					<textElement verticalAlignment="Middle"/>
 				</textField>
 				<textField isStretchWithOverflow="true" isBlankWhenNull="true">
-					<reportElement stretchType="RelativeToTallestObject" mode="Transparent" x="532" y="0" width="52" height="20" backcolor="#FFFFFF" uuid="5bd238d8-9032-47a4-bb75-4c8dcf51ea3f">
+					<reportElement stretchType="RelativeToTallestObject" mode="Transparent" x="540" y="0" width="52" height="20" backcolor="#FFFFFF" uuid="5bd238d8-9032-47a4-bb75-4c8dcf51ea3f">
 						<property name="com.jaspersoft.studio.unit.width" value="px"/>
 					</reportElement>
 					<box topPadding="2" leftPadding="4" bottomPadding="2">
@@ -628,7 +621,7 @@ $P{decimalFormat}.format($F{quantityordered}).toString() : ""]]></textFieldExpre
 				<reportElement stretchType="RelativeToTallestObject" mode="Opaque" x="88" y="0" width="58" height="30" forecolor="#FFFFFF" backcolor="#3D3D3D" uuid="8a782996-25b8-431e-8f60-a4e655c2c5f4">
 					<property name="com.jaspersoft.studio.unit.width" value="px"/>
 				</reportElement>
-				<box leftPadding="4">
+				<box leftPadding="4" topPadding="3" bottomPadding="3">
 					<pen lineWidth="1.0" lineColor="#DDDDDD"/>
 				</box>
 				<textElement textAlignment="Left" verticalAlignment="Middle">
@@ -637,10 +630,10 @@ $P{decimalFormat}.format($F{quantityordered}).toString() : ""]]></textFieldExpre
 				<textFieldExpression><![CDATA[$R{report.column.productUnit}]]></textFieldExpression>
 			</textField>
 			<textField isStretchWithOverflow="true">
-				<reportElement stretchType="RelativeToTallestObject" mode="Opaque" x="642" y="0" width="76" height="30" forecolor="#FFFFFF" backcolor="#3D3D3D" uuid="f9d6f98e-afd8-4ce5-8157-220bd9fa8446">
+				<reportElement stretchType="RelativeToTallestObject" mode="Opaque" x="650" y="0" width="76" height="30" forecolor="#FFFFFF" backcolor="#3D3D3D" uuid="f9d6f98e-afd8-4ce5-8157-220bd9fa8446">
 					<property name="com.jaspersoft.studio.unit.width" value="px"/>
 				</reportElement>
-				<box leftPadding="4" rightPadding="5">
+				<box leftPadding="4" rightPadding="5" topPadding="3" bottomPadding="3">
 					<pen lineWidth="1.0" lineColor="#DDDDDD"/>
 				</box>
 				<textElement textAlignment="Left" verticalAlignment="Middle">
@@ -649,10 +642,10 @@ $P{decimalFormat}.format($F{quantityordered}).toString() : ""]]></textFieldExpre
 				<textFieldExpression><![CDATA[$R{report.column.rejectionReason}]]></textFieldExpression>
 			</textField>
 			<textField isStretchWithOverflow="true">
-				<reportElement stretchType="RelativeToTallestObject" mode="Opaque" x="472" y="0" width="60" height="30" forecolor="#FFFFFF" backcolor="#3D3D3D" uuid="3667b897-6566-4a00-9115-84b1bd096b63">
+				<reportElement stretchType="RelativeToTallestObject" mode="Opaque" x="480" y="0" width="60" height="30" forecolor="#FFFFFF" backcolor="#3D3D3D" uuid="3667b897-6566-4a00-9115-84b1bd096b63">
 					<property name="com.jaspersoft.studio.unit.width" value="px"/>
 				</reportElement>
-				<box leftPadding="4">
+				<box leftPadding="4" topPadding="3" bottomPadding="3">
 					<pen lineWidth="1.0" lineColor="#DDDDDD"/>
 				</box>
 				<textElement textAlignment="Left" verticalAlignment="Middle">
@@ -661,10 +654,10 @@ $P{decimalFormat}.format($F{quantityordered}).toString() : ""]]></textFieldExpre
 				<textFieldExpression><![CDATA[$R{report.column.quantityAccepted}]]></textFieldExpression>
 			</textField>
 			<textField isStretchWithOverflow="true">
-				<reportElement stretchType="RelativeToTallestObject" mode="Opaque" x="584" y="0" width="58" height="30" forecolor="#FFFFFF" backcolor="#3D3D3D" uuid="d72c000a-17fc-4a96-8117-65f457417583">
+				<reportElement stretchType="RelativeToTallestObject" mode="Opaque" x="592" y="0" width="58" height="30" forecolor="#FFFFFF" backcolor="#3D3D3D" uuid="d72c000a-17fc-4a96-8117-65f457417583">
 					<property name="com.jaspersoft.studio.unit.width" value="px"/>
 				</reportElement>
-				<box leftPadding="4">
+				<box leftPadding="4" topPadding="3" bottomPadding="3">
 					<pen lineWidth="1.0" lineColor="#DDDDDD"/>
 				</box>
 				<textElement textAlignment="Left" verticalAlignment="Middle">
@@ -673,11 +666,11 @@ $P{decimalFormat}.format($F{quantityordered}).toString() : ""]]></textFieldExpre
 				<textFieldExpression><![CDATA[$R{report.column.quantityReturned}]]></textFieldExpression>
 			</textField>
 			<textField isStretchWithOverflow="true">
-				<reportElement stretchType="RelativeToTallestObject" mode="Opaque" x="718" y="0" width="82" height="30" forecolor="#FFFFFF" backcolor="#3D3D3D" uuid="4f61abba-d09f-476f-b326-8128d8beabf6">
+				<reportElement stretchType="RelativeToTallestObject" mode="Opaque" x="726" y="0" width="74" height="30" forecolor="#FFFFFF" backcolor="#3D3D3D" uuid="4f61abba-d09f-476f-b326-8128d8beabf6">
 					<property name="com.jaspersoft.studio.unit.width" value="px"/>
 					<property name="com.jaspersoft.studio.unit.x" value="px"/>
 				</reportElement>
-				<box leftPadding="4">
+				<box leftPadding="4" topPadding="3" bottomPadding="3">
 					<pen lineWidth="1.0" lineColor="#DDDDDD"/>
 				</box>
 				<textElement textAlignment="Left" verticalAlignment="Middle">
@@ -686,10 +679,10 @@ $P{decimalFormat}.format($F{quantityordered}).toString() : ""]]></textFieldExpre
 				<textFieldExpression><![CDATA[$R{report.column.notes}]]></textFieldExpression>
 			</textField>
 			<textField isStretchWithOverflow="true">
-				<reportElement stretchType="RelativeToTallestObject" mode="Opaque" x="400" y="0" width="72" height="30" forecolor="#FFFFFF" backcolor="#3D3D3D" uuid="b9210c7f-69d9-46a7-b90a-b762cba5722e">
+				<reportElement stretchType="RelativeToTallestObject" mode="Opaque" x="400" y="0" width="80" height="30" forecolor="#FFFFFF" backcolor="#3D3D3D" uuid="b9210c7f-69d9-46a7-b90a-b762cba5722e">
 					<property name="com.jaspersoft.studio.unit.width" value="px"/>
 				</reportElement>
-				<box leftPadding="4">
+				<box leftPadding="4" topPadding="3" bottomPadding="3">
 					<pen lineWidth="1.0" lineColor="#DDDDDD"/>
 				</box>
 				<textElement textAlignment="Left" verticalAlignment="Middle">
@@ -701,7 +694,7 @@ $P{decimalFormat}.format($F{quantityordered}).toString() : ""]]></textFieldExpre
 				<reportElement stretchType="RelativeToTallestObject" mode="Opaque" x="146" y="0" width="76" height="30" forecolor="#FFFFFF" backcolor="#3D3D3D" uuid="6b057f3a-3628-4b32-89a5-19424bd9a0a1">
 					<property name="com.jaspersoft.studio.unit.width" value="px"/>
 				</reportElement>
-				<box leftPadding="4">
+				<box leftPadding="4" topPadding="3" bottomPadding="3">
 					<pen lineWidth="1.0" lineColor="#DDDDDD"/>
 				</box>
 				<textElement textAlignment="Left" verticalAlignment="Middle">
@@ -713,7 +706,7 @@ $P{decimalFormat}.format($F{quantityordered}).toString() : ""]]></textFieldExpre
 				<reportElement stretchType="RelativeToTallestObject" mode="Opaque" x="222" y="0" width="112" height="30" forecolor="#FFFFFF" backcolor="#3D3D3D" uuid="956509d5-6869-481c-ac40-3c532d43f180">
 					<property name="com.jaspersoft.studio.unit.width" value="px"/>
 				</reportElement>
-				<box leftPadding="4">
+				<box leftPadding="4" topPadding="3" bottomPadding="3">
 					<pen lineWidth="1.0" lineColor="#DDDDDD"/>
 				</box>
 				<textElement textAlignment="Left" verticalAlignment="Middle">
@@ -722,10 +715,10 @@ $P{decimalFormat}.format($F{quantityordered}).toString() : ""]]></textFieldExpre
 				<textFieldExpression><![CDATA[$R{report.column.quantityShippedInPacks}]]></textFieldExpression>
 			</textField>
 			<textField isStretchWithOverflow="true">
-				<reportElement stretchType="RelativeToTallestObject" mode="Opaque" x="334" y="0" width="66" height="30" forecolor="#FFFFFF" backcolor="#3D3D3D" uuid="30bef613-2951-4bf4-bb81-075161f1b278">
+				<reportElement stretchType="RelativeToTallestObject" mode="Opaque" x="334" y="0" width="66" height="30" forecolor="#FFFFFF" backcolor="#3D3D3D" uuid="1be4955a-48ba-56dd-9d4c-13a7d1aa70d1">
 					<property name="com.jaspersoft.studio.unit.width" value="px"/>
 				</reportElement>
-				<box leftPadding="4">
+				<box leftPadding="4" topPadding="3" bottomPadding="3">
 					<pen lineWidth="1.0" lineColor="#DDDDDD"/>
 				</box>
 				<textElement textAlignment="Left" verticalAlignment="Middle">
@@ -737,7 +730,7 @@ $P{decimalFormat}.format($F{quantityordered}).toString() : ""]]></textFieldExpre
 				<reportElement stretchType="RelativeToTallestObject" mode="Opaque" x="0" y="0" width="88" height="30" forecolor="#FFFFFF" backcolor="#3D3D3D" uuid="8d8bd2db-ee0f-4eda-8ae3-b7f5a67b1a36">
 					<property name="com.jaspersoft.studio.unit.width" value="px"/>
 				</reportElement>
-				<box leftPadding="4">
+				<box leftPadding="4" topPadding="3" bottomPadding="3">
 					<pen lineWidth="1.0" lineColor="#DDDDDD"/>
 				</box>
 				<textElement textAlignment="Left" verticalAlignment="Middle">
@@ -746,10 +739,10 @@ $P{decimalFormat}.format($F{quantityordered}).toString() : ""]]></textFieldExpre
 				<textFieldExpression><![CDATA[$R{report.column.productName}]]></textFieldExpression>
 			</textField>
 			<textField isStretchWithOverflow="true">
-				<reportElement stretchType="RelativeToTallestObject" mode="Opaque" x="532" y="0" width="52" height="30" forecolor="#FFFFFF" backcolor="#3D3D3D" uuid="4dd0ebe8-9fe8-47bc-bd24-a2f0cc58a70d">
+				<reportElement stretchType="RelativeToTallestObject" mode="Opaque" x="540" y="0" width="52" height="30" forecolor="#FFFFFF" backcolor="#3D3D3D" uuid="4dd0ebe8-9fe8-47bc-bd24-a2f0cc58a70d">
 					<property name="com.jaspersoft.studio.unit.width" value="px"/>
 				</reportElement>
-				<box leftPadding="4" rightPadding="5">
+				<box leftPadding="4" rightPadding="5" topPadding="3" bottomPadding="3">
 					<pen lineWidth="1.0" lineColor="#DDDDDD"/>
 				</box>
 				<textElement textAlignment="Left" verticalAlignment="Middle">
@@ -764,7 +757,7 @@ $P{decimalFormat}.format($F{quantityordered}).toString() : ""]]></textFieldExpre
 			<property name="com.jaspersoft.studio.unit.height" value="px"/>
 			<printWhenExpression><![CDATA[$F{productname} != null]]></printWhenExpression>
 			<textField isStretchWithOverflow="true" isBlankWhenNull="true">
-				<reportElement stretchType="RelativeToTallestObject" x="400" y="0" width="72" height="20" uuid="59068d4e-5e09-4316-ac21-ca8af3968af1">
+				<reportElement stretchType="RelativeToTallestObject" x="400" y="0" width="80" height="20" uuid="59068d4e-5e09-4316-ac21-ca8af3968af1">
 					<property name="com.jaspersoft.studio.unit.width" value="px"/>
 				</reportElement>
 				<box topPadding="2" leftPadding="4" bottomPadding="2">
@@ -793,7 +786,7 @@ $P{decimalFormat}.format($F{quantityordered}).toString() : ""]]></textFieldExpre
 $P{decimalFormat}.format($F{quantityshipped}).toString() : ""]]></textFieldExpression>
 			</textField>
 			<textField isStretchWithOverflow="true" isBlankWhenNull="true">
-				<reportElement stretchType="RelativeToTallestObject" x="334" y="0" width="66" height="20" uuid="aaafe05b-8e4a-45d1-9c05-014de66b8850">
+				<reportElement stretchType="RelativeToTallestObject" x="334" y="0" width="66" height="20" uuid="d8a4e0df-fcfa-5f09-afca-2366bb980da3">
 					<property name="com.jaspersoft.studio.unit.width" value="px"/>
 				</reportElement>
 				<box topPadding="2" leftPadding="4" bottomPadding="2">
@@ -808,7 +801,7 @@ $P{decimalFormat}.format($F{quantityshipped}).toString() : ""]]></textFieldExpre
 $P{decimalFormat}.format($F{quantityshippeddoses}).toString() : ""]]></textFieldExpression>
 			</textField>
 			<textField isStretchWithOverflow="true" isBlankWhenNull="true">
-				<reportElement stretchType="RelativeToTallestObject" x="718" y="0" width="82" height="20" uuid="3d74a886-184c-4912-9be8-d505876fe76c">
+				<reportElement stretchType="RelativeToTallestObject" x="726" y="0" width="74" height="20" uuid="3d74a886-184c-4912-9be8-d505876fe76c">
 					<property name="com.jaspersoft.studio.unit.width" value="px"/>
 					<property name="com.jaspersoft.studio.unit.x" value="px"/>
 				</reportElement>
@@ -823,7 +816,7 @@ $P{decimalFormat}.format($F{quantityshippeddoses}).toString() : ""]]></textField
 				<textFieldExpression><![CDATA[$F{notes}]]></textFieldExpression>
 			</textField>
 			<textField isStretchWithOverflow="true" isBlankWhenNull="true">
-				<reportElement stretchType="RelativeToTallestObject" x="642" y="0" width="76" height="20" uuid="31bd7674-5efc-40cb-b704-910398e5a53a">
+				<reportElement stretchType="RelativeToTallestObject" x="650" y="0" width="76" height="20" uuid="31bd7674-5efc-40cb-b704-910398e5a53a">
 					<property name="com.jaspersoft.studio.unit.width" value="px"/>
 				</reportElement>
 				<box topPadding="2" leftPadding="4" bottomPadding="2">
@@ -837,7 +830,7 @@ $P{decimalFormat}.format($F{quantityshippeddoses}).toString() : ""]]></textField
 				<textFieldExpression><![CDATA[$F{rejectionreason}]]></textFieldExpression>
 			</textField>
 			<textField isStretchWithOverflow="true" isBlankWhenNull="true">
-				<reportElement stretchType="RelativeToTallestObject" x="472" y="0" width="60" height="20" uuid="e2085931-c16a-4880-b6ff-eedbb1301cf0">
+				<reportElement stretchType="RelativeToTallestObject" x="480" y="0" width="60" height="20" uuid="e2085931-c16a-4880-b6ff-eedbb1301cf0">
 					<property name="com.jaspersoft.studio.unit.width" value="px"/>
 				</reportElement>
 				<box topPadding="2" leftPadding="4" bottomPadding="2">
@@ -852,7 +845,7 @@ $P{decimalFormat}.format($F{quantityshippeddoses}).toString() : ""]]></textField
 $P{decimalFormat}.format($F{quantityaccepted}).toString() : ""]]></textFieldExpression>
 			</textField>
 			<textField isStretchWithOverflow="true" isBlankWhenNull="true">
-				<reportElement stretchType="RelativeToTallestObject" x="584" y="0" width="58" height="20" uuid="a313b3f1-4386-4e49-bc65-cf3e9cc4f4b2">
+				<reportElement stretchType="RelativeToTallestObject" x="592" y="0" width="58" height="20" uuid="a313b3f1-4386-4e49-bc65-cf3e9cc4f4b2">
 					<property name="com.jaspersoft.studio.unit.width" value="px"/>
 				</reportElement>
 				<box topPadding="2" leftPadding="4" bottomPadding="2">
@@ -906,7 +899,7 @@ $P{decimalFormat}.format($F{quantityreturned}).toString() : ""]]></textFieldExpr
 				<textElement verticalAlignment="Middle"/>
 			</textField>
 			<textField isStretchWithOverflow="true" isBlankWhenNull="true">
-				<reportElement stretchType="RelativeToTallestObject" mode="Transparent" x="532" y="0" width="52" height="20" backcolor="#FFFFFF" uuid="7ebc9567-9dd6-442c-8a16-5e24e6949750">
+				<reportElement stretchType="RelativeToTallestObject" mode="Transparent" x="540" y="0" width="52" height="20" backcolor="#FFFFFF" uuid="7ebc9567-9dd6-442c-8a16-5e24e6949750">
 					<property name="com.jaspersoft.studio.unit.width" value="px"/>
 				</reportElement>
 				<box topPadding="2" leftPadding="4" bottomPadding="2">
