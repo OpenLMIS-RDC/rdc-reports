@@ -10,6 +10,7 @@ Improvements:
 
 New functionality:
 * [MW-1449](https://openlmis.atlassian.net/browse/MW-1449): Ported the Superset guest token endpoint for embedded dashboards from core openlmis-report (SupersetService, guest-token endpoint gated by REPORTS_VIEW, embeddedUuid on dashboard reports).
+* [ODRC-158](https://openlmis.atlassian.net/browse/ODRC-158) RDC Proof of Delivery printout with the shipped quantity in packs and in doses, wider quantity columns and header cells that grow together; the service fills it when fulfillment sends its Proof of Delivery template to /api/reports/generate
 
 1.2.0 / 2026-06-09
 ==================

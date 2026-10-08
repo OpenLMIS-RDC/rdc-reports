@@ -45,6 +45,7 @@ import org.openlmis.report.dto.external.GenerateReportDto;
 import org.openlmis.report.exception.ReportingException;
 import org.openlmis.report.service.JasperReportsViewService;
 import org.openlmis.report.service.JasperTemplateService;
+import org.openlmis.report.service.ReportTemplateOverrideService;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.test.util.ReflectionTestUtils;
@@ -53,6 +54,7 @@ public class GenerateReportControllerTest {
   private static final String TEMPLATE_NAME = "Test Report";
   private static final byte[] TEMPLATE_DATA = "jasper-template-data".getBytes();
   private static final byte[] EXPECTED_REPORT = "generated-report-binary".getBytes();
+  private static final byte[] OVERRIDE_DATA = "rdc-template-data".getBytes();
 
   @Mock
   private JasperTemplateService jasperTemplateService;
@@ -61,7 +63,13 @@ public class GenerateReportControllerTest {
   private JasperReportsViewService jasperReportsViewService;
 
   @Mock
+  private ReportTemplateOverrideService reportTemplateOverrideService;
+
+  @Mock
   private JasperReport jasperReport;
+
+  @Mock
+  private JasperReport overrideReport;
 
   @InjectMocks
   private GenerateReportController controller;
@@ -94,6 +102,32 @@ public class GenerateReportControllerTest {
     assertEquals(MediaType.APPLICATION_PDF, response.getHeaders().getContentType());
     assertTrue(response.getHeaders().getFirst("Content-Disposition")
         .contains("filename=Test_Report.pdf"));
+    assertArrayEquals(EXPECTED_REPORT, response.getBody());
+  }
+
+  @Test
+  public void shouldFillTheSentTemplateWhenItHasNoOverride() throws Exception {
+    GenerateReportDto request = new GenerateReportDto(TEMPLATE_NAME, TEMPLATE_DATA,
+        new HashMap<>());
+
+    controller.generateReport(request);
+
+    verify(reportTemplateOverrideService).findOverride(jasperReport);
+    verify(jasperTemplateService).getMapSubreportGlobalHeaderParameters(jasperReport);
+    verify(jasperReportsViewService).getJasperReportsView(eq(TEMPLATE_DATA), any(Map.class));
+  }
+
+  @Test
+  public void shouldFillTheOverrideInsteadOfTheSentTemplate() throws Exception {
+    when(reportTemplateOverrideService.findOverride(jasperReport)).thenReturn(OVERRIDE_DATA);
+    when(jasperTemplateService.loadReport(OVERRIDE_DATA)).thenReturn(overrideReport);
+    GenerateReportDto request = new GenerateReportDto(TEMPLATE_NAME, TEMPLATE_DATA,
+        new HashMap<>());
+
+    ResponseEntity<byte[]> response = controller.generateReport(request);
+
+    verify(jasperTemplateService).getMapSubreportGlobalHeaderParameters(overrideReport);
+    verify(jasperReportsViewService).getJasperReportsView(eq(OVERRIDE_DATA), any(Map.class));
     assertArrayEquals(EXPECTED_REPORT, response.getBody());
   }
 
