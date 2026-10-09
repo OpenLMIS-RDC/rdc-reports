@@ -37,7 +37,6 @@ import net.sf.jasperreports.engine.JasperFillManager;
 import net.sf.jasperreports.engine.JasperPrint;
 import net.sf.jasperreports.engine.JasperReport;
 import net.sf.jasperreports.engine.data.JRBeanCollectionDataSource;
-import org.apache.commons.io.serialization.ValidatingObjectInputStream;
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
@@ -47,14 +46,14 @@ import org.mockito.Mock;
 import org.mockito.Spy;
 import org.openlmis.report.domain.JasperTemplate;
 import org.openlmis.report.exception.JasperReportViewException;
+import org.openlmis.report.utils.JasperReportDeserializer;
 import org.powermock.core.classloader.annotations.PrepareForTest;
 import org.powermock.modules.junit4.PowerMockRunner;
 import org.powermock.modules.junit4.PowerMockRunnerDelegate;
 
 @RunWith(PowerMockRunner.class)
 @PowerMockRunnerDelegate(BlockJUnit4ClassRunner.class)
-@PrepareForTest({JasperReportsViewService.class, JasperFillManager.class, DataSource.class,
-    ValidatingObjectInputStream.class})
+@PrepareForTest({JasperReportsViewService.class, JasperFillManager.class, DataSource.class})
 @SuppressWarnings("PMD.TooManyMethods")
 public class JasperReportsViewServiceTest {
 
@@ -85,7 +84,7 @@ public class JasperReportsViewServiceTest {
   private JasperReport jasperReport;
 
   @Mock
-  private ValidatingObjectInputStream validatingObjectInputStream;
+  private JasperReportDeserializer reportDeserializer;
 
   @Mock
   private DataSource replicationDataSource;
@@ -103,9 +102,7 @@ public class JasperReportsViewServiceTest {
 
     doReturn(new byte[0]).when(jasperTemplate).getData();
 
-    whenNew(ValidatingObjectInputStream.class).withAnyArguments()
-        .thenReturn(validatingObjectInputStream);
-    when(validatingObjectInputStream.readObject()).thenReturn(jasperReport);
+    when(reportDeserializer.deserialize(any(byte[].class))).thenReturn(jasperReport);
 
     mockStatic(JasperFillManager.class);
     when(JasperFillManager.fillReport(any(JasperReport.class), any(), any(Connection.class)))

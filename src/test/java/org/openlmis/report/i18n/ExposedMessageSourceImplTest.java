@@ -15,17 +15,25 @@
 
 package org.openlmis.report.i18n;
 
-public class DashboardReportMessageKeys extends MessageKeys {
-  public static final String ERROR_DASHBOARD_REPORT_NAME_DUPLICATED =
-      "report.error.dashboardReport.name.duplicated";
-  public static final String ERROR_DASHBOARD_REPORT_NOT_FOUND =
-      "report.error.dashboardReport.notFound";
-  public static final String ERROR_DASHBOARD_REPORT_ID_MISMATCH =
-      "report.error.dashboardReport.id.mismatch";
-  public static final String ERROR_COULD_NOT_SAVE_RIGHT =
-      "report.error.dashboardReport.save.right.failed";
-  public static final String ERROR_COULD_NOT_DELETE_RIGHT =
-      "report.error.dashboardReport.delete.right.failed";
-  public static final String ERROR_URL_OR_EMBEDDED_UUID_REQUIRED =
-      "report.error.dashboardReport.urlOrEmbeddedUuid.required";
+import static org.junit.Assert.assertEquals;
+
+import java.util.Locale;
+import java.util.Properties;
+import org.junit.Test;
+
+public class ExposedMessageSourceImplTest {
+
+  @Test
+  public void apostropheWithPlaceholderIsRenderedCorrectly() {
+    ExposedMessageSourceImpl source = new ExposedMessageSourceImpl();
+    source.setDefaultEncoding("UTF-8");
+    Properties messages = new Properties();
+    messages.setProperty("test.apostrophe", "L'établissement {0}");
+    source.setCommonMessages(messages);
+
+    String result = source.getMessage("test.apostrophe",
+        new Object[] {"abc"}, Locale.FRENCH);
+
+    assertEquals("L'établissement abc", result);
+  }
 }

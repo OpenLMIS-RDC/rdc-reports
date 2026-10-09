@@ -18,7 +18,6 @@ package org.openlmis.report.service;
 import static org.openlmis.report.i18n.JasperMessageKeys.ERROR_JASPER_REPORT_FORMAT_UNKNOWN;
 import static org.openlmis.report.i18n.JasperMessageKeys.ERROR_JASPER_REPORT_GENERATION;
 
-import java.io.ByteArrayInputStream;
 import java.sql.Connection;
 import java.util.Collection;
 import java.util.Map;
@@ -29,9 +28,9 @@ import net.sf.jasperreports.engine.JasperFillManager;
 import net.sf.jasperreports.engine.JasperPrint;
 import net.sf.jasperreports.engine.JasperReport;
 import net.sf.jasperreports.engine.data.JRBeanCollectionDataSource;
-import org.apache.commons.io.serialization.ValidatingObjectInputStream;
 import org.openlmis.report.domain.JasperTemplate;
 import org.openlmis.report.exception.JasperReportViewException;
+import org.openlmis.report.utils.JasperReportDeserializer;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
@@ -41,6 +40,9 @@ public class JasperReportsViewService {
 
   @Autowired
   private DataSource replicationDataSource;
+
+  @Autowired
+  private JasperReportDeserializer reportDeserializer;
 
   /**
    * Create Jasper Report View. Create Jasper Report (".jasper" file) from bytes from Template
@@ -56,24 +58,7 @@ public class JasperReportsViewService {
       throws JasperReportViewException {
 
     try {
-      JasperReport jasperReport;
-      try (ByteArrayInputStream byteInputStream = new ByteArrayInputStream(template);
-           ValidatingObjectInputStream vois = new ValidatingObjectInputStream(byteInputStream)) {
-        vois.accept(
-            "net.sf.jasperreports.*",
-            "java.awt.*",
-            "java.util.*",
-            "java.lang.*",
-            "java.math.*",
-            "[Lnet.sf.jasperreports.*",
-            "[Ljava.awt.*",
-            "[Ljava.util.*",
-            "[Ljava.lang.*",
-            "[Ljava.math.*",
-            "[B"
-        );
-        jasperReport = (JasperReport) vois.readObject();
-      }
+      JasperReport jasperReport = reportDeserializer.deserialize(template);
 
       JasperPrint jasperPrint;
       if (params.containsKey(PARAM_DATASOURCE) && params.get(PARAM_DATASOURCE) != null) {
