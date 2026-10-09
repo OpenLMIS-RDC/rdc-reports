@@ -153,7 +153,7 @@ resourceTypes:
           displayName: Generate Report with Custom Datasource
           post:
               is: [ secured ]
-              description: Generates a Jasper report using a provided JSON data source and template payload.
+              description: Generates a Jasper report using a provided JSON data source and template payload. The payload contains a pre-compiled, serialized JasperReport, so this endpoint may only be called by another service using a service-level token - user tokens and API keys are rejected.
               body:
                   application/json:
               responses:
@@ -259,6 +259,13 @@ resourceTypes:
           post:
               is: [ secured ]
               description: Create or update report template.
+              queryParameters:
+                  override:
+                      displayName: override
+                      description: Replace an existing template with the same name.
+                      type: boolean
+                      required: false
+                      repeat: false
               body:
                   multipart/form-data:
                     formParameters:

@@ -19,4 +19,5 @@ public class PermissionMessageKeys extends MessageKeys {
   public static String ERROR = join(SERVICE_ERROR, "permission");
 
   public static String ERROR_NO_PERMISSION = join(ERROR, "no", "permission");
+  public static String ERROR_SERVICE_TOKEN_REQUIRED = join(ERROR, "serviceTokenRequired");
 }

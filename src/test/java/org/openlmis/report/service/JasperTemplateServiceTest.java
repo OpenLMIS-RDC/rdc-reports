@@ -29,6 +29,7 @@ import static org.mockito.Matchers.any;
 import static org.mockito.Matchers.anyString;
 import static org.mockito.Matchers.eq;
 import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import static org.openlmis.report.i18n.AuthorizationMessageKeys.ERROR_RIGHT_NOT_FOUND;
@@ -44,6 +45,7 @@ import static org.powermock.api.mockito.PowerMockito.doNothing;
 import static org.powermock.api.mockito.PowerMockito.mock;
 import static org.powermock.api.mockito.PowerMockito.mockStatic;
 import static org.powermock.api.mockito.PowerMockito.spy;
+import static org.powermock.api.mockito.PowerMockito.verifyStatic;
 import static org.powermock.api.mockito.PowerMockito.whenNew;
 
 import java.awt.image.BufferedImage;
@@ -66,14 +68,14 @@ import java.util.Set;
 import java.util.UUID;
 import javax.imageio.ImageIO;
 import javax.servlet.http.HttpServletRequest;
-import net.sf.jasperreports.engine.JRException;
+
 import net.sf.jasperreports.engine.JRExpression;
 import net.sf.jasperreports.engine.JRParameter;
 import net.sf.jasperreports.engine.JRPropertiesMap;
 import net.sf.jasperreports.engine.JasperCompileManager;
 import net.sf.jasperreports.engine.JasperReport;
 import net.sf.jasperreports.engine.type.OrientationEnum;
-import net.sf.jasperreports.engine.util.JRLoader;
+
 import org.junit.Before;
 import org.junit.Rule;
 import org.junit.Test;
@@ -97,6 +99,7 @@ import org.openlmis.report.repository.JasperTemplateRepository;
 import org.openlmis.report.repository.ReportCategoryRepository;
 import org.openlmis.report.repository.ReportImageRepository;
 import org.openlmis.report.service.referencedata.RightReferenceDataService;
+import org.openlmis.report.utils.JasperReportDeserializer;
 import org.powermock.core.classloader.annotations.PrepareForTest;
 import org.powermock.modules.junit4.PowerMockRunner;
 import org.powermock.modules.junit4.PowerMockRunnerDelegate;
@@ -108,15 +111,10 @@ import org.springframework.web.multipart.MultipartFile;
 @PrepareForTest({
     JasperTemplateService.class,
     JasperCompileManager.class,
-    ResourceBundle.class,
-    JRLoader.class,
     java.nio.file.Files.class
 })
 @SuppressWarnings("PMD.TooManyMethods")
 public class JasperTemplateServiceTest {
-
-  @Mock
-  private ReportTranslationBundleProvider translationBundleProvider;
 
   @Mock
   private JasperTemplateRepository jasperTemplateRepository;
@@ -129,6 +127,12 @@ public class JasperTemplateServiceTest {
 
   @Mock
   private ReportCategoryRepository reportCategoryRepository;
+
+  @Mock
+  private ReportTranslationBundleProvider translationBundleProvider;
+
+  @Mock
+  private JasperReportDeserializer reportDeserializer;
 
   @InjectMocks
   private JasperTemplateService jasperTemplateService;
@@ -153,6 +157,12 @@ public class JasperTemplateServiceTest {
   private static final String HEADER_CONFIG_PROPERTIES = "/config/reports/header_config.properties";
   private static final String GLOBAL_HEADER_LANDSCAPE = "GlobalHeaderLandscape";
   private static final String GLOBAL_HEADER_PORTRAIT = "GlobalHeaderPortrait";
+  private static final String GLOBAL_HEADER_PORTRAIT_PATH =
+      "/config/reports/GlobalHeaderPortrait.jrxml";
+  private static final String DESC = "desc";
+  private static final String USERS_MANAGE = "USERS_MANAGE";
+  private static final String JAVA_LANG_STRING = "java.lang.String";
+  private static final String DEFAULT_EXPR_TEXT = "text";
   
   private HttpServletRequest request;
   private JasperTemplate template;
@@ -208,11 +218,57 @@ public class JasperTemplateServiceTest {
     assertEquals(template.getId(), oldId);
   }
 
+  @Test
+  public void shouldThrowWhenTemplateExistsAndOverrideIsNull() throws Exception {
+    expectedException.expect(ValidationMessageException.class);
+    expectedException.expectMessage(ERROR_REPORTING_TEMPLATE_EXIST);
+
+    ReportCategory reportCategory = new ReportCategory();
+    reportCategory.setId(UUID.randomUUID());
+    reportCategory.setName(CATEGORY_NAME);
+
+    JasperTemplate existing = new JasperTemplate();
+    existing.setName(DISPLAY_NAME);
+    existing.setId(UUID.randomUUID());
+    existing.setRequiredRights(new ArrayList<>());
+    existing.setCategory(reportCategory);
+
+    given(jasperTemplateRepository.findByName(anyString())).willReturn(existing);
+    given(reportCategoryRepository.findByName(anyString())).willReturn(Optional.of(reportCategory));
+    given(rightReferenceDataService.findRight(anyString())).willReturn(new RightDto());
+
+    jasperTemplateService.saveTemplate(mock(MultipartFile.class), DISPLAY_NAME, DESC,
+        Collections.singletonList(USERS_MANAGE), CATEGORY_NAME, null);
+  }
+
+  @Test
+  public void shouldThrowWhenTemplateExistsAndOverrideIsFalse() throws Exception {
+    expectedException.expect(ValidationMessageException.class);
+    expectedException.expectMessage(ERROR_REPORTING_TEMPLATE_EXIST);
+
+    ReportCategory reportCategory = new ReportCategory();
+    reportCategory.setId(UUID.randomUUID());
+    reportCategory.setName(CATEGORY_NAME);
+
+    JasperTemplate existing = new JasperTemplate();
+    existing.setName(DISPLAY_NAME);
+    existing.setId(UUID.randomUUID());
+    existing.setRequiredRights(new ArrayList<>());
+    existing.setCategory(reportCategory);
+
+    given(jasperTemplateRepository.findByName(anyString())).willReturn(existing);
+    given(reportCategoryRepository.findByName(anyString())).willReturn(Optional.of(reportCategory));
+    given(rightReferenceDataService.findRight(anyString())).willReturn(new RightDto());
+
+    jasperTemplateService.saveTemplate(mock(MultipartFile.class), DISPLAY_NAME, DESC,
+        Collections.singletonList(USERS_MANAGE), CATEGORY_NAME, false);
+  }
+
   private JasperTemplate testSaveTemplate() throws ReportingException {
     JasperTemplateService service = spy(jasperTemplateService);
     MultipartFile file = mock(MultipartFile.class);
     String description = "description";
-    List<String> requiredRights = Collections.singletonList("USERS_MANAGE");
+    List<String> requiredRights = Collections.singletonList(USERS_MANAGE);
 
     given(rightReferenceDataService.findRight(requiredRights.get(0)))
         .willReturn(new RightDto());
@@ -223,7 +279,7 @@ public class JasperTemplateServiceTest {
 
     // when
     JasperTemplate resultTemplate = service.saveTemplate(file,
-        JasperTemplateServiceTest.DISPLAY_NAME, description, requiredRights, CATEGORY_NAME);
+        JasperTemplateServiceTest.DISPLAY_NAME, description, requiredRights, CATEGORY_NAME, true);
 
     // then
     assertEquals(JasperTemplateServiceTest.DISPLAY_NAME, resultTemplate.getName());
@@ -244,7 +300,7 @@ public class JasperTemplateServiceTest {
 
     // when
     jasperTemplateService.saveTemplate(null, null, null, Collections.singletonList(rejectedRight),
-        null);
+        null, false);
   }
   
   @Test
@@ -386,18 +442,18 @@ public class JasperTemplateServiceTest {
     when(propertiesMap.getProperty("options")).thenReturn("option 1,opt\\,ion 2");
 
     when(param1.getPropertiesMap()).thenReturn(propertiesMap);
-    when(param1.getValueClassName()).thenReturn("java.lang.String");
+    when(param1.getValueClassName()).thenReturn(JAVA_LANG_STRING);
     when(param1.getName()).thenReturn(PARAM_NAME);
     when(param1.isForPrompting()).thenReturn(true);
-    when(param1.getDescription()).thenReturn("desc");
+    when(param1.getDescription()).thenReturn(DESC);
     when(param1.getDefaultValueExpression()).thenReturn(jrExpression);
-    when(jrExpression.getText()).thenReturn("text");
+    when(jrExpression.getText()).thenReturn(DEFAULT_EXPR_TEXT);
 
     when(param2.getPropertiesMap()).thenReturn(propertiesMap);
     when(param2.getValueClassName()).thenReturn("java.lang.Integer");
     when(param2.getName()).thenReturn(PARAM_NAME);
     when(param2.isForPrompting()).thenReturn(true);
-    when(param2.getDescription()).thenReturn("desc");
+    when(param2.getDescription()).thenReturn(DESC);
     when(param2.getDefaultValueExpression()).thenReturn(jrExpression);
 
     when(param3.getValueClassName()).thenReturn("java.awt.Image");
@@ -424,7 +480,7 @@ public class JasperTemplateServiceTest {
     assertEquals("test type", jasperTemplate.getType());
     assertThat(jasperTemplate.getTemplateParameters().get(0).getDisplayName(),
         is(PARAM_DISPLAY_NAME));
-    assertThat(jasperTemplate.getTemplateParameters().get(0).getDescription(), is("desc"));
+    assertThat(jasperTemplate.getTemplateParameters().get(0).getDescription(), is(DESC));
     assertThat(jasperTemplate.getTemplateParameters().get(0).getName(), is(PARAM_NAME));
     assertThat(jasperTemplate.getTemplateParameters().get(0).getRequired(), is(true));
     assertThat(jasperTemplate.getTemplateParameters().get(0).getOptions(), contains("option 1",
@@ -455,10 +511,10 @@ public class JasperTemplateServiceTest {
     when(propertiesMap.getProperty(DISPLAY_NAME)).thenReturn(PARAM_DISPLAY_NAME);
 
     when(param1.getPropertiesMap()).thenReturn(propertiesMap);
-    when(param1.getValueClassName()).thenReturn("java.lang.String");
+    when(param1.getValueClassName()).thenReturn(JAVA_LANG_STRING);
     when(param1.isForPrompting()).thenReturn(true);
     when(param1.getDefaultValueExpression()).thenReturn(jrExpression);
-    when(jrExpression.getText()).thenReturn("text");
+    when(jrExpression.getText()).thenReturn(DEFAULT_EXPR_TEXT);
 
     when(param2.getPropertiesMap()).thenReturn(propertiesMap);
     when(param2.getValueClassName()).thenReturn("java.lang.Integer");
@@ -617,11 +673,11 @@ public class JasperTemplateServiceTest {
         + "field2:contains:value2");
 
     when(param1.getPropertiesMap()).thenReturn(propertiesMap);
-    when(param1.getValueClassName()).thenReturn("java.lang.String");
+    when(param1.getValueClassName()).thenReturn(JAVA_LANG_STRING);
     when(param1.getName()).thenReturn(PARAM_NAME);
     when(param1.isForPrompting()).thenReturn(true);
     when(param1.getDefaultValueExpression()).thenReturn(jrExpression);
-    when(jrExpression.getText()).thenReturn("text");
+    when(jrExpression.getText()).thenReturn(DEFAULT_EXPR_TEXT);
 
     ByteArrayOutputStream byteOutputStream = mock(ByteArrayOutputStream.class);
     whenNew(ByteArrayOutputStream.class).withAnyArguments().thenReturn(byteOutputStream);
@@ -731,13 +787,13 @@ public class JasperTemplateServiceTest {
         .willReturn(Optional.empty());
 
     MultipartFile file = mock(MultipartFile.class);
-    List<String> requiredRights = Collections.singletonList("USERS_MANAGE");
+    List<String> requiredRights = Collections.singletonList(USERS_MANAGE);
 
     given(rightReferenceDataService.findRight(requiredRights.get(0)))
         .willReturn(new RightDto());
 
     jasperTemplateService.saveTemplate(file, "TestName", "Description",
-        requiredRights, "NonExistentCategory");
+        requiredRights, "NonExistentCategory", false);
   }
 
   @Test
@@ -765,21 +821,52 @@ public class JasperTemplateServiceTest {
     JasperTemplateService service = spy(jasperTemplateService);
     MultipartFile file = mock(MultipartFile.class);
     String newDescription = "New Description";
-    List<String> newRights = Collections.singletonList("USERS_MANAGE");
+    List<String> newRights = Collections.singletonList(USERS_MANAGE);
 
     doNothing().when(service)
         .validateFileAndSaveTemplate(any(JasperTemplate.class), eq(file));
 
     JasperTemplate resultTemplate = service.saveTemplate(file,
-        DISPLAY_NAME, newDescription, newRights, CATEGORY_NAME);
+        DISPLAY_NAME, newDescription, newRights, CATEGORY_NAME, true);
 
     assertEquals(newDescription, resultTemplate.getDescription());
     assertEquals(newRights, resultTemplate.getRequiredRights());
   }
 
   @Test
-  public void getLocaleBundleShouldReturnEmptyMapForInvalidResourceBundleNames() throws Exception {
+  public void getLocaleBundleShouldReturnEmptyMapForNullLocaleString() throws Exception {
     assertTrue(jasperTemplateService.getLocaleBundleParameters(null).isEmpty());
+  }
+
+  @Test
+  public void getLocaleBundleShouldReturnEmptyMapWhenProviderHasNoBundle() throws Exception {
+    given(translationBundleProvider.getBundle(any(Locale.class))).willReturn(null);
+
+    assertTrue(jasperTemplateService.getLocaleBundleParameters("en").isEmpty());
+  }
+
+  @Test
+  public void getLocaleBundleShouldReturnMapWithBundleAndLocale() throws Exception {
+    ResourceBundle mockBundle = mock(ResourceBundle.class);
+    given(translationBundleProvider.getBundle(any(Locale.class))).willReturn(mockBundle);
+
+    Map<String, Object> result = jasperTemplateService.getLocaleBundleParameters("fr");
+
+    assertEquals(2, result.size());
+    assertEquals(mockBundle, result.get(JRParameter.REPORT_RESOURCE_BUNDLE));
+    assertEquals(new Locale.Builder().setLanguageTag("fr").build(),
+        result.get(JRParameter.REPORT_LOCALE));
+  }
+
+  @Test
+  public void getLocaleBundleShouldFallbackToEnglishForInvalidLocale() throws Exception {
+    ResourceBundle mockBundle = mock(ResourceBundle.class);
+    given(translationBundleProvider.getBundle(any(Locale.class))).willReturn(mockBundle);
+
+    Map<String, Object> result =
+        jasperTemplateService.getLocaleBundleParameters("invalid@locale#string");
+
+    assertEquals(Locale.ENGLISH, result.get(JRParameter.REPORT_LOCALE));
   }
 
   @Test
@@ -794,8 +881,7 @@ public class JasperTemplateServiceTest {
     byte[] templateData = new byte[]{1, 2, 3};
 
     JasperReport mockReport = mock(JasperReport.class);
-    mockStatic(JRLoader.class);
-    when(JRLoader.loadObject(any(InputStream.class))).thenReturn(mockReport);
+    when(reportDeserializer.deserialize(any(byte[].class))).thenReturn(mockReport);
 
     JasperReport result = jasperTemplateService.loadReport(templateData);
 
@@ -804,8 +890,8 @@ public class JasperTemplateServiceTest {
 
   @Test
   public void loadReportWithByteArrayShouldThrowExceptionForInvalidReportFile() throws Exception {
-    mockStatic(JRLoader.class);
-    when(JRLoader.loadObject(any(InputStream.class))).thenThrow(new JRException("Invalid file"));
+    when(reportDeserializer.deserialize(any(byte[].class)))
+        .thenThrow(new ClassNotFoundException("Invalid file"));
 
     expectedException.expect(ReportingException.class);
     expectedException.expectMessage(ERROR_REPORTING_FILE_INVALID);
@@ -827,8 +913,7 @@ public class JasperTemplateServiceTest {
     when(template.getData()).thenReturn(templateData);
 
     JasperReport mockReport = mock(JasperReport.class);
-    mockStatic(JRLoader.class);
-    when(JRLoader.loadObject(any(InputStream.class))).thenReturn(mockReport);
+    when(reportDeserializer.deserialize(any(byte[].class))).thenReturn(mockReport);
 
     JasperReport result = jasperTemplateService.loadReport(template);
 
@@ -841,8 +926,8 @@ public class JasperTemplateServiceTest {
     byte[] templateData = new byte[]{1, 2, 3};
     when(template.getData()).thenReturn(templateData);
 
-    mockStatic(JRLoader.class);
-    when(JRLoader.loadObject(any(InputStream.class))).thenThrow(new JRException("Invalid file"));
+    when(reportDeserializer.deserialize(any(byte[].class)))
+        .thenThrow(new ClassNotFoundException("Invalid file"));
 
     expectedException.expect(ReportingException.class);
     expectedException.expectMessage(ERROR_REPORTING_FILE_INVALID);
@@ -868,7 +953,7 @@ public class JasperTemplateServiceTest {
     tempJrxml.deleteOnExit();
 
     File mockHeaderFile = mock(File.class);
-    whenNew(File.class).withArguments("/config/reports/GlobalHeaderPortrait.jrxml")
+    whenNew(File.class).withArguments(GLOBAL_HEADER_PORTRAIT_PATH)
         .thenReturn(mockHeaderFile);
     when(mockHeaderFile.exists()).thenReturn(true);
     when(mockHeaderFile.toPath()).thenReturn(tempJrxml.toPath());
@@ -914,7 +999,7 @@ public class JasperTemplateServiceTest {
     }
 
     File mockHeaderFile = mock(File.class);
-    whenNew(File.class).withArguments("/config/reports/GlobalHeaderPortrait.jrxml")
+    whenNew(File.class).withArguments(GLOBAL_HEADER_PORTRAIT_PATH)
         .thenReturn(mockHeaderFile);
     when(mockHeaderFile.exists()).thenReturn(true);
     when(mockHeaderFile.toPath()).thenReturn(tempJrxml.toPath());
@@ -942,6 +1027,48 @@ public class JasperTemplateServiceTest {
     assertEquals(mockCompiledHeader, result.get(HEADER_PARAM_NAME));
     assertEquals("Test Title", result.get("title"));
     assertNull(result.get("logoImage"));
+  }
+
+  @Test
+  public void getGlobalHeaderShouldCacheCompiledHeader() throws Exception {
+    JasperReport parentReport = mock(JasperReport.class);
+    JRParameter headerParam = mock(JRParameter.class);
+    when(headerParam.getName()).thenReturn(HEADER_PARAM_NAME);
+    when(parentReport.getParameters()).thenReturn(new JRParameter[]{headerParam});
+    when(parentReport.getOrientationValue()).thenReturn(OrientationEnum.PORTRAIT);
+
+    File mockConfigDir = mock(File.class);
+    whenNew(File.class).withArguments(CONFIG_PATH_CONST).thenReturn(mockConfigDir);
+    when(mockConfigDir.exists()).thenReturn(true);
+    when(mockConfigDir.isDirectory()).thenReturn(true);
+
+    File tempJrxml = File.createTempFile(GLOBAL_HEADER_PORTRAIT, JRXML_EXTENSION);
+    tempJrxml.deleteOnExit();
+
+    File mockHeaderFile = mock(File.class);
+    whenNew(File.class).withArguments(GLOBAL_HEADER_PORTRAIT_PATH)
+        .thenReturn(mockHeaderFile);
+    when(mockHeaderFile.exists()).thenReturn(true);
+    when(mockHeaderFile.toPath()).thenReturn(tempJrxml.toPath());
+
+    JasperReport mockCompiledHeader = mock(JasperReport.class);
+    mockStatic(JasperCompileManager.class);
+    when(JasperCompileManager.compileReport(any(InputStream.class)))
+        .thenReturn(mockCompiledHeader);
+
+    File mockConfigFile = mock(File.class);
+    whenNew(File.class).withArguments(HEADER_CONFIG_PROPERTIES)
+        .thenReturn(mockConfigFile);
+    when(mockConfigFile.exists()).thenReturn(false);
+
+    jasperTemplateService.getMapSubreportGlobalHeaderParameters(parentReport);
+    Map<String, Object> secondResult = jasperTemplateService
+        .getMapSubreportGlobalHeaderParameters(parentReport);
+
+    // second generation is served from the cache - no recompilation
+    assertEquals(mockCompiledHeader, secondResult.get(HEADER_PARAM_NAME));
+    verifyStatic(JasperCompileManager.class, times(1));
+    JasperCompileManager.compileReport(any(InputStream.class));
   }
 
   @Test
@@ -1029,7 +1156,7 @@ public class JasperTemplateServiceTest {
     when(mockConfigDir.isDirectory()).thenReturn(true);
 
     File mockHeaderFile = mock(File.class);
-    whenNew(File.class).withArguments("/config/reports/GlobalHeaderPortrait.jrxml")
+    whenNew(File.class).withArguments(GLOBAL_HEADER_PORTRAIT_PATH)
         .thenReturn(mockHeaderFile);
     when(mockHeaderFile.exists()).thenReturn(false);
 
@@ -1157,42 +1284,74 @@ public class JasperTemplateServiceTest {
     assertEquals("/config/reports/logo.png", result.get("logoImage"));
   }
 
+  @Test
+  public void shouldSetDisplayOrderFromJrxmlDeclarationOrder() throws Exception {
+    MultipartFile file = mock(MultipartFile.class);
+    when(file.getOriginalFilename()).thenReturn(NAME_OF_FILE);
+
+    mockStatic(JasperCompileManager.class);
+    JasperReport report = mock(JasperReport.class);
+    InputStream inputStream = mock(InputStream.class);
+    when(file.getInputStream()).thenReturn(inputStream);
+
+    JRParameter first = mock(JRParameter.class);
+    JRParameter imageParam = mock(JRParameter.class);
+    JRParameter second = mock(JRParameter.class);
+    JRParameter third = mock(JRParameter.class);
+    JRPropertiesMap propertiesMap = mock(JRPropertiesMap.class);
+    JRExpression jrExpression = mock(JRExpression.class);
+
+    String[] propertyNames = {DISPLAY_NAME};
+    when(report.getParameters())
+        .thenReturn(new JRParameter[]{first, imageParam, second, third});
+    when(JasperCompileManager.compileReport(inputStream)).thenReturn(report);
+    when(propertiesMap.getPropertyNames()).thenReturn(propertyNames);
+    when(propertiesMap.getProperty(DISPLAY_NAME)).thenReturn(PARAM_DISPLAY_NAME);
+    when(jrExpression.getText()).thenReturn(DEFAULT_EXPR_TEXT);
+
+    for (JRParameter p : new JRParameter[]{first, second, third}) {
+      when(p.getPropertiesMap()).thenReturn(propertiesMap);
+      when(p.getValueClassName()).thenReturn(JAVA_LANG_STRING);
+      when(p.isForPrompting()).thenReturn(true);
+      when(p.getDefaultValueExpression()).thenReturn(jrExpression);
+    }
+    when(first.getName()).thenReturn(PARAM1);
+    when(second.getName()).thenReturn(PARAM2);
+    when(third.getName()).thenReturn(PARAM3);
+
+    when(imageParam.getValueClassName()).thenReturn("java.awt.Image");
+    when(imageParam.isForPrompting()).thenReturn(false);
+    when(imageParam.isSystemDefined()).thenReturn(false);
+    when(imageParam.getName()).thenReturn(IMAGE_NAME);
+    when(reportImageRepository.findByName(IMAGE_NAME)).thenReturn(mock(ReportImage.class));
+
+    ByteArrayOutputStream byteOutputStream = mock(ByteArrayOutputStream.class);
+    whenNew(ByteArrayOutputStream.class).withAnyArguments().thenReturn(byteOutputStream);
+    ObjectOutputStream objectOutputStream = spy(new ObjectOutputStream(byteOutputStream));
+    whenNew(ObjectOutputStream.class).withArguments(byteOutputStream)
+        .thenReturn(objectOutputStream);
+    doNothing().when(objectOutputStream).writeObject(report);
+    when(byteOutputStream.toByteArray()).thenReturn(new byte[1]);
+
+    JasperTemplate jasperTemplate = new JasperTemplate();
+
+    jasperTemplateService.validateFileAndInsertTemplate(jasperTemplate, file);
+
+    List<JasperTemplateParameter> params = jasperTemplate.getTemplateParameters();
+    assertEquals(3, params.size());
+    assertEquals(PARAM1, params.get(0).getName());
+    assertEquals(Integer.valueOf(0), params.get(0).getDisplayOrder());
+    assertEquals(PARAM2, params.get(1).getName());
+    assertEquals(Integer.valueOf(1), params.get(1).getDisplayOrder());
+    assertEquals(PARAM3, params.get(2).getName());
+    assertEquals(Integer.valueOf(2), params.get(2).getDisplayOrder());
+  }
+
   private byte[] convertImageToByteArray(BufferedImage image) throws IOException {
     ByteArrayOutputStream os = new ByteArrayOutputStream();
     ImageIO.write(image, "png", os);
     final byte[] expectedData = os.toByteArray();
     os.close();
     return expectedData;
-  }
-
-  @Test
-  public void getLocaleBundleShouldReturnEmptyMapWhenProviderHasNoBundle() throws Exception {
-    given(translationBundleProvider.getBundle(any(Locale.class))).willReturn(null);
-
-    assertTrue(jasperTemplateService.getLocaleBundleParameters("en").isEmpty());
-  }
-
-  @Test
-  public void getLocaleBundleShouldReturnMapWithBundleAndLocale() throws Exception {
-    ResourceBundle mockBundle = mock(ResourceBundle.class);
-    given(translationBundleProvider.getBundle(any(Locale.class))).willReturn(mockBundle);
-
-    Map<String, Object> result = jasperTemplateService.getLocaleBundleParameters("fr");
-
-    assertEquals(2, result.size());
-    assertEquals(mockBundle, result.get(JRParameter.REPORT_RESOURCE_BUNDLE));
-    assertEquals(new Locale.Builder().setLanguageTag("fr").build(),
-        result.get(JRParameter.REPORT_LOCALE));
-  }
-
-  @Test
-  public void getLocaleBundleShouldFallbackToEnglishForInvalidLocale() throws Exception {
-    ResourceBundle mockBundle = mock(ResourceBundle.class);
-    given(translationBundleProvider.getBundle(any(Locale.class))).willReturn(mockBundle);
-
-    Map<String, Object> result =
-        jasperTemplateService.getLocaleBundleParameters("invalid@locale#string");
-
-    assertEquals(Locale.ENGLISH, result.get(JRParameter.REPORT_LOCALE));
   }
 }
