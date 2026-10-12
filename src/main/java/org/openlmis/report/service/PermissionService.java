@@ -16,6 +16,7 @@
 package org.openlmis.report.service;
 
 import static org.openlmis.report.i18n.PermissionMessageKeys.ERROR_NO_PERMISSION;
+import static org.openlmis.report.i18n.PermissionMessageKeys.ERROR_SERVICE_TOKEN_REQUIRED;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -28,6 +29,10 @@ import org.openlmis.report.service.referencedata.UserReferenceDataService;
 import org.openlmis.report.utils.AuthenticationHelper;
 import org.openlmis.report.utils.Message;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.security.oauth2.provider.OAuth2Authentication;
 import org.springframework.stereotype.Service;
 
 @Service
@@ -42,6 +47,26 @@ public class PermissionService {
 
   @Autowired
   private UserReferenceDataService userReferenceDataService;
+
+  @Value("${auth.server.clientId}")
+  private String serviceTokenClientId;
+
+  /**
+   * Verifies the request was made with the trusted service-level token. The generate endpoint
+   * consumes pre-compiled, serialized report payloads, so it must only be callable
+   * service-to-service - user tokens and API keys are rejected.
+   */
+  public void canGenerateReports() {
+    Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+    if (authentication instanceof OAuth2Authentication) {
+      OAuth2Authentication oauth = (OAuth2Authentication) authentication;
+      if (oauth.isClientOnly()
+          && serviceTokenClientId.equals(oauth.getOAuth2Request().getClientId())) {
+        return;
+      }
+    }
+    throw new PermissionMessageException(new Message(ERROR_SERVICE_TOKEN_REQUIRED));
+  }
 
   /**
    * Check whether the user has REPORT_TEMPLATES_EDIT permission.

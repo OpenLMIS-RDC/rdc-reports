@@ -15,7 +15,6 @@
 
 package org.openlmis.report.domain;
 
-import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 import java.util.UUID;
@@ -30,6 +29,7 @@ import javax.persistence.JoinTable;
 import javax.persistence.ManyToMany;
 import javax.persistence.ManyToOne;
 import javax.persistence.OneToMany;
+import javax.persistence.OrderBy;
 import javax.persistence.PrePersist;
 import javax.persistence.PreUpdate;
 import javax.persistence.Table;
@@ -72,13 +72,14 @@ public class JasperTemplate extends BaseEntity {
       fetch = FetchType.EAGER,
       orphanRemoval = true)
   @Fetch(FetchMode.SELECT)
+  @OrderBy("displayOrder ASC NULLS LAST")
   private List<JasperTemplateParameter> templateParameters;
 
   @ManyToMany(fetch = FetchType.EAGER)
   @JoinTable(name = "jasper_templates_report_images",
       joinColumns = @JoinColumn(name = "jaspertemplateid", nullable = false),
       inverseJoinColumns = @JoinColumn(name = "reportimageid", nullable = false))
-  private Set<ReportImage> reportImages = new HashSet<>();
+  private Set<ReportImage> reportImages;
 
   private Boolean visible;
 

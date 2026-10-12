@@ -76,28 +76,29 @@ WHERE cii.id = $P{inventoryItemId}::uuid]]>
 	</background>
 	<title>
 		<band height="90" splitType="Stretch">
-			<staticText>
-				<reportElement positionType="FixRelativeToBottom" x="0" y="0" width="802" height="30" uuid="bc3874ea-c0b6-4870-bb5d-b63fd3314fee"/>
+			<textField isStretchWithOverflow="true">
+				<reportElement x="0" y="0" width="802" height="30" uuid="bc3874ea-c0b6-4870-bb5d-b63fd3314fee"/>
 				<textElement textAlignment="Center">
 					<font size="24"/>
 				</textElement>
-				<text><![CDATA[Remote Temperature Monitoring Alerts in the Past 30 Days]]></text>
-			</staticText>
-			<textField>
-				<reportElement positionType="FixRelativeToBottom" x="0" y="30" width="400" height="15" uuid="6603b7c0-88ee-4ed5-8ab7-8ce1525ab34a"/>
-				<textFieldExpression><![CDATA["Equipment: " + $F{inventoryItemReferenceName}]]></textFieldExpression>
+			
+				<textFieldExpression><![CDATA[$R{report.title.cceAlertHistory}]]></textFieldExpression>
 			</textField>
-			<textField>
-				<reportElement positionType="FixRelativeToBottom" x="0" y="45" width="400" height="15" uuid="391255e0-1e46-4c5f-8f5c-44d3476acd5b"/>
-				<textFieldExpression><![CDATA["Facility: " + $F{facilityName}]]></textFieldExpression>
+			<textField isStretchWithOverflow="true">
+				<reportElement positionType="Float" x="0" y="30" width="400" height="15" uuid="6603b7c0-88ee-4ed5-8ab7-8ce1525ab34a"/>
+				<textFieldExpression><![CDATA[msg($R{report.pattern.labelledValue}, $R{report.header.equipment}, $F{inventoryItemReferenceName})]]></textFieldExpression>
 			</textField>
-			<textField>
-				<reportElement positionType="FixRelativeToBottom" x="0" y="60" width="400" height="15" uuid="8f145179-c938-4a8f-87f2-6ea47071508f"/>
-				<textFieldExpression><![CDATA["Program: " + $F{programName}]]></textFieldExpression>
+			<textField isStretchWithOverflow="true">
+				<reportElement positionType="Float" x="0" y="45" width="400" height="15" uuid="391255e0-1e46-4c5f-8f5c-44d3476acd5b"/>
+				<textFieldExpression><![CDATA[msg($R{report.pattern.labelledValue}, $R{report.header.facility}, $F{facilityName})]]></textFieldExpression>
 			</textField>
-			<textField>
-				<reportElement positionType="FixRelativeToBottom" x="0" y="75" width="400" height="15" uuid="7e71222a-5f8f-4569-a08a-c9a0d4baa75f"/>
-				<textFieldExpression><![CDATA["Generated on: " + DateTimeFormatter.ofPattern($P{dateTimeFormat}).format(ZonedDateTime.now()) + " " + $P{timeZoneId}]]></textFieldExpression>
+			<textField isStretchWithOverflow="true">
+				<reportElement positionType="Float" x="0" y="60" width="400" height="15" uuid="8f145179-c938-4a8f-87f2-6ea47071508f"/>
+				<textFieldExpression><![CDATA[msg($R{report.pattern.labelledValue}, $R{report.header.program}, $F{programName})]]></textFieldExpression>
+			</textField>
+			<textField isStretchWithOverflow="true">
+				<reportElement positionType="Float" x="0" y="75" width="400" height="15" uuid="7e71222a-5f8f-4569-a08a-c9a0d4baa75f"/>
+				<textFieldExpression><![CDATA[msg($R{report.pattern.labelledValue}, $R{report.header.generatedOn}, DateTimeFormatter.ofPattern($P{dateTimeFormat}).format(ZonedDateTime.now()) + " " + $P{timeZoneId})]]></textFieldExpression>
 			</textField>
 		</band>
 	</title>
@@ -134,13 +135,14 @@ WHERE cii.id = $P{inventoryItemId}::uuid]]>
 						<property name="com.jaspersoft.studio.components.table.model.column.name" value="Column1"/>
 						<jr:columnHeader style="Table_CH" height="30" rowSpan="1">
 							<property name="com.jaspersoft.studio.unit.width" value="pixel"/>
-							<staticText>
+							<textField isStretchWithOverflow="true">
 								<reportElement x="0" y="0" width="50" height="30" forecolor="#FFFFFF" backcolor="#000000" uuid="5d0efb1b-aa11-497b-96d3-4996a162ee44"/>
 								<textElement textAlignment="Center" verticalAlignment="Middle">
 									<font isBold="true"/>
 								</textElement>
-								<text><![CDATA[Active?]]></text>
-							</staticText>
+							
+								<textFieldExpression><![CDATA[$R{report.column.active}]]></textFieldExpression>
+			</textField>
 						</jr:columnHeader>
 						<jr:detailCell style="Table_TD" height="30">
 							<textField isStretchWithOverflow="true" isBlankWhenNull="true">
@@ -154,13 +156,14 @@ WHERE cii.id = $P{inventoryItemId}::uuid]]>
 						<property name="com.jaspersoft.studio.components.table.model.column.name" value="Column2"/>
 						<jr:columnHeader style="Table_CH" height="30" rowSpan="1">
 							<property name="com.jaspersoft.studio.unit.width" value="pixel"/>
-							<staticText>
+							<textField isStretchWithOverflow="true">
 								<reportElement x="0" y="0" width="302" height="30" forecolor="#FFFFFF" backcolor="#000000" uuid="667ec2de-e77a-4213-9f11-f475da2ad346"/>
 								<textElement textAlignment="Center" verticalAlignment="Middle">
 									<font isBold="true"/>
 								</textElement>
-								<text><![CDATA[Message]]></text>
-							</staticText>
+							
+								<textFieldExpression><![CDATA[$R{report.column.message}]]></textFieldExpression>
+			</textField>
 						</jr:columnHeader>
 						<jr:detailCell style="Table_TD" height="30">
 							<textField isBlankWhenNull="true">
@@ -174,13 +177,14 @@ WHERE cii.id = $P{inventoryItemId}::uuid]]>
 						<property name="com.jaspersoft.studio.components.table.model.column.name" value="Column3"/>
 						<jr:columnHeader style="Table_CH" height="30" rowSpan="1">
 							<property name="com.jaspersoft.studio.unit.width" value="pixel"/>
-							<staticText>
+							<textField isStretchWithOverflow="true">
 								<reportElement x="0" y="0" width="150" height="30" forecolor="#FFFFFF" backcolor="#000000" uuid="cadefb93-93d7-4b2e-8b9a-62b4f2b1bf16"/>
 								<textElement textAlignment="Center" verticalAlignment="Middle">
 									<font isBold="true"/>
 								</textElement>
-								<text><![CDATA[Date Started]]></text>
-							</staticText>
+							
+								<textFieldExpression><![CDATA[$R{report.column.dateStarted}]]></textFieldExpression>
+			</textField>
 						</jr:columnHeader>
 						<jr:detailCell style="Table_TD" height="30">
 							<textField isStretchWithOverflow="true" isBlankWhenNull="true">
@@ -194,13 +198,14 @@ WHERE cii.id = $P{inventoryItemId}::uuid]]>
 						<property name="com.jaspersoft.studio.components.table.model.column.name" value="Column4"/>
 						<jr:columnHeader style="Table_CH" height="30" rowSpan="1">
 							<property name="com.jaspersoft.studio.unit.width" value="pixel"/>
-							<staticText>
+							<textField isStretchWithOverflow="true">
 								<reportElement x="0" y="0" width="150" height="30" forecolor="#FFFFFF" backcolor="#000000" uuid="b722ec2b-7798-4553-ad19-d2ead3109a6b"/>
 								<textElement textAlignment="Center" verticalAlignment="Middle">
 									<font isBold="true"/>
 								</textElement>
-								<text><![CDATA[Date Ended]]></text>
-							</staticText>
+							
+								<textFieldExpression><![CDATA[$R{report.column.dateEnded}]]></textFieldExpression>
+			</textField>
 						</jr:columnHeader>
 						<jr:detailCell style="Table_TD" height="30">
 							<textField isStretchWithOverflow="true" isBlankWhenNull="true">
@@ -213,13 +218,14 @@ WHERE cii.id = $P{inventoryItemId}::uuid]]>
 					<jr:column width="150" uuid="a34c8f74-167d-4f4d-bd4e-8d23c3470550">
 						<property name="com.jaspersoft.studio.components.table.model.column.name" value="Column5"/>
 						<jr:columnHeader style="Table_CH" height="30" rowSpan="1">
-							<staticText>
+							<textField isStretchWithOverflow="true">
 								<reportElement x="0" y="0" width="150" height="30" forecolor="#FFFFFF" backcolor="#000000" uuid="94a27e13-856c-4419-aa8e-1f6ff0c4eab4"/>
 								<textElement textAlignment="Center" verticalAlignment="Middle">
 									<font isBold="true"/>
 								</textElement>
-								<text><![CDATA[Date Dismissed]]></text>
-							</staticText>
+							
+								<textFieldExpression><![CDATA[$R{report.column.dateDismissed}]]></textFieldExpression>
+			</textField>
 						</jr:columnHeader>
 						<jr:detailCell style="Table_TD" height="30">
 							<textField isStretchWithOverflow="true" isBlankWhenNull="true">
@@ -235,15 +241,15 @@ WHERE cii.id = $P{inventoryItemId}::uuid]]>
 	</detail>
 	<pageFooter>
 		<band height="30" splitType="Stretch">
-			<textField>
+			<textField isStretchWithOverflow="true">
 				<reportElement x="330" y="10" width="70" height="20" uuid="49d7030b-3cad-47e5-af05-f063c98fb9e4"/>
 				<textElement textAlignment="Right" verticalAlignment="Bottom"/>
-				<textFieldExpression><![CDATA["Page " + $V{PAGE_NUMBER}]]></textFieldExpression>
+				<textFieldExpression><![CDATA[msg($R{report.controls.pageNumber}, $V{PAGE_NUMBER})]]></textFieldExpression>
 			</textField>
-			<textField evaluationTime="Report">
+			<textField isStretchWithOverflow="true" evaluationTime="Report">
 				<reportElement x="400" y="10" width="50" height="20" uuid="08848fb7-8d78-4e93-a448-483ebae4c582"/>
-				<textElement textAlignment="Left" verticalAlignment="Bottom"/>
-				<textFieldExpression><![CDATA[" of " + $V{PAGE_NUMBER}]]></textFieldExpression>
+				<textElement textAlignment="Left" verticalAlignment="Bottom"><paragraph leftIndent="3"/></textElement>
+				<textFieldExpression><![CDATA[msg($R{report.controls.pageTotal}, $V{PAGE_NUMBER})]]></textFieldExpression>
 			</textField>
 		</band>
 	</pageFooter>

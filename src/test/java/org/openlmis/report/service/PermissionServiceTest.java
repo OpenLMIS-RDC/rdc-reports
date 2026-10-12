@@ -28,6 +28,7 @@ import static org.openlmis.report.service.PermissionService.REPORT_TEMPLATES_EDI
 import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
+import org.junit.After;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.mockito.InjectMocks;
@@ -39,6 +40,12 @@ import org.openlmis.report.dto.external.referencedata.UserDto;
 import org.openlmis.report.exception.PermissionMessageException;
 import org.openlmis.report.service.referencedata.UserReferenceDataService;
 import org.openlmis.report.utils.AuthenticationHelper;
+import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.security.oauth2.provider.OAuth2Authentication;
+import org.springframework.security.oauth2.provider.OAuth2Request;
+import org.springframework.test.util.ReflectionTestUtils;
 
 @RunWith(MockitoJUnitRunner.class)
 @SuppressWarnings("PMD.TooManyMethods")
@@ -52,6 +59,53 @@ public class PermissionServiceTest {
 
   @InjectMocks
   private PermissionService permissionService;
+
+  private static final String SERVICE_CLIENT_ID = "trusted-client";
+
+  @After
+  public void cleanSecurityContext() {
+    SecurityContextHolder.clearContext();
+  }
+
+  @Test
+  public void shouldAcceptGenerateReportsForServiceLevelToken() {
+    mockOauthAuthentication(SERVICE_CLIENT_ID, true);
+
+    permissionService.canGenerateReports();
+  }
+
+  @Test(expected = PermissionMessageException.class)
+  public void shouldRejectGenerateReportsForUserToken() {
+    mockOauthAuthentication(SERVICE_CLIENT_ID, false);
+
+    permissionService.canGenerateReports();
+  }
+
+  @Test(expected = PermissionMessageException.class)
+  public void shouldRejectGenerateReportsForClientTokenOfOtherClient() {
+    mockOauthAuthentication("api-key-prefix-1234", true);
+
+    permissionService.canGenerateReports();
+  }
+
+  @Test(expected = PermissionMessageException.class)
+  public void shouldRejectGenerateReportsForNonOauthAuthentication() {
+    ReflectionTestUtils.setField(permissionService, "serviceTokenClientId", SERVICE_CLIENT_ID);
+    SecurityContextHolder.getContext().setAuthentication(
+        new UsernamePasswordAuthenticationToken("user", "password"));
+
+    permissionService.canGenerateReports();
+  }
+
+  private void mockOauthAuthentication(String clientId, boolean clientOnly) {
+    ReflectionTestUtils.setField(permissionService, "serviceTokenClientId", SERVICE_CLIENT_ID);
+    OAuth2Request oauthRequest = new OAuth2Request(null, clientId, null, true, null, null,
+        null, null, null);
+    Authentication userAuthentication = clientOnly
+        ? null : new UsernamePasswordAuthenticationToken("user", "password");
+    SecurityContextHolder.getContext().setAuthentication(
+        new OAuth2Authentication(oauthRequest, userAuthentication));
+  }
 
   @Test
   public void shouldNotRejectViewReportsWhenUserHasViewReportsRight() {

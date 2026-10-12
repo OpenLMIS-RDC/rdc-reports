@@ -2,6 +2,7 @@
 ==================
 
 Improvements:
+* [ODRC-167](https://openlmis.atlassian.net/browse/ODRC-167) Upgraded to core openlmis-report v1.6.0 (OpenLMIS 3.20)
 * [ODRC-154](https://openlmis.atlassian.net/browse/ODRC-154) Use the Geographic Level filter in the report SQLs and show the geographic and facility filters in the report header
 * [ODRC-148](https://openlmis.atlassian.net/browse/ODRC-148) Unified filters for the RDC Jasper reports and created them with fixed ids
 * [ODRC-149](https://openlmis.atlassian.net/browse/ODRC-149) Change reports' date format to DD-MM-YYYY

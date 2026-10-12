@@ -90,7 +90,7 @@ FROM
     ON dispensable.id = orderable.dispensableid
   JOIN
   fulfillment.order_line_items order_li
-    ON order_li.orderid = shipment.orderid AND order_li.orderableid = shipment_li.orderableid AND shipment_li.orderableversionnumber = order_li.orderableversionnumber
+    ON order_li.orderid = shipment.orderid AND order_li.orderableid = shipment_li.orderableid
   LEFT JOIN
   referencedata.lots lot
     ON shipment_li.lotid = lot.id
@@ -139,40 +139,35 @@ FROM
   JOIN
   referencedata.dispensables dispensable
     ON dispensable.id = orderable.dispensableid
-  JOIN referencedata.orderable_identifiers shipment_orderable_identifier ON orderable.id = shipment_orderable_identifier.orderableid
-                                                       AND (shipment_orderable_identifier.key = 'tradeItem' OR shipment_orderable_identifier.key = 'commodityType')
+  JOIN
+  referencedata.orderable_identifiers shipment_orderable_identifier
+    ON shipment_orderable_identifier.orderableid = orderable.id
+    AND shipment_orderable_identifier.orderableversionnumber = orderable.versionnumber
+    AND shipment_orderable_identifier.key = 'tradeItem'
+  JOIN
+  referencedata.trade_item_classifications trade_item_classification
+    ON trade_item_classification.tradeitemid = shipment_orderable_identifier.value::uuid
+  JOIN
+  referencedata.commodity_types commodity_type
+    ON commodity_type.classificationsystem = trade_item_classification.classificationsystem
+    AND commodity_type.classificationid = trade_item_classification.classificationid
   JOIN
   fulfillment.order_line_items order_li
-    ON order_li.orderid = shipment.orderid AND order_li.orderableid = shipment_li.orderableid
-	AND order_li.orderableid IN (
-        SELECT o.id
-        FROM referencedata.orderables o
-        LEFT JOIN referencedata.orderable_identifiers order_orderable_identifier
-          ON o.id = order_orderable_identifier.orderableid
-        LEFT JOIN referencedata.trade_items trade_item
-          ON order_orderable_identifier.value::uuid = trade_item.id
-        LEFT JOIN referencedata.commodity_types commodity_type
-          ON order_orderable_identifier.value::uuid = commodity_type.id
-        WHERE NOT EXISTS (
-          SELECT 1
-          FROM referencedata.dispensable_attributes orderer_dispensable_attribute
-          JOIN referencedata.dispensable_attributes shipment_dispensable_attribute
-            ON shipment_dispensable_attribute.dispensableid = orderer_dispensable_attribute.dispensableid
-          WHERE orderer_dispensable_attribute.key = shipment_dispensable_attribute.key
-            AND orderer_dispensable_attribute.value <> shipment_dispensable_attribute.value
-        )
-        AND (
-          shipment_orderable_identifier.value::uuid = trade_item.id
-          OR shipment_orderable_identifier.value::uuid = commodity_type.id
-        )
-      )
-  LEFT JOIN
-  referencedata.lots lot
-    ON shipment_li.lotid = lot.id
+    ON order_li.orderid = shipment.orderid
+    AND order_li.orderableid <> shipment_li.orderableid
   JOIN
   referencedata.orderables order_orderable
     ON order_orderable.id = order_li.orderableid
     AND order_orderable.versionnumber = order_li.orderableversionnumber
+  JOIN
+  referencedata.orderable_identifiers order_orderable_identifier
+    ON order_orderable_identifier.orderableid = order_orderable.id
+    AND order_orderable_identifier.orderableversionnumber = order_orderable.versionnumber
+    AND order_orderable_identifier.key = 'commodityType'
+    AND order_orderable_identifier.value::uuid = commodity_type.id
+  LEFT JOIN
+  referencedata.lots lot
+    ON shipment_li.lotid = lot.id
   JOIN
   stockmanagement.stock_cards stock_card
     ON (stock_card.facilityId = ord.supplyingFacilityId AND stock_card.programId = ord.programId AND shipment_li.orderableId = stock_card.orderableId AND ((shipment_li.lotId IS NULL AND stock_card.lotId IS NULL) OR shipment_li.lotId = stock_card.lotId))
@@ -182,6 +177,14 @@ FROM
 WHERE
   shipment.id = $P{shipmentDraftId}::uuid
   AND shipment_li.quantityshipped > 0
+  AND NOT EXISTS (
+    SELECT 1
+    FROM referencedata.dispensable_attributes order_dispensable_attribute
+    JOIN referencedata.dispensable_attributes shipment_dispensable_attribute
+      ON shipment_dispensable_attribute.key = order_dispensable_attribute.key
+    WHERE order_dispensable_attribute.dispensableid = order_orderable.dispensableid
+      AND shipment_dispensable_attribute.dispensableid = dispensable.id
+      AND lower(order_dispensable_attribute.value) <> lower(shipment_dispensable_attribute.value))
   AND stock_card_li.id IN
   (SELECT id
    FROM stockmanagement.stock_card_line_items
@@ -288,15 +291,16 @@ ORDER BY
 	<title>
 		<band height="90" splitType="Stretch">
 			<property name="com.jaspersoft.studio.unit.height" value="px"/>
-			<staticText>
+			<textField isStretchWithOverflow="true">
 				<reportElement positionType="FixRelativeToBottom" x="0" y="0" width="200" height="30" uuid="bc3874ea-c0b6-4870-bb5d-b63fd3314fee"/>
 				<textElement>
 					<font size="24"/>
 				</textElement>
-				<text><![CDATA[Pick Pack List]]></text>
-			</staticText>
+			
+				<textFieldExpression><![CDATA[$R{report.title.pickPackList}]]></textFieldExpression>
+			</textField>
 			<componentElement>
-				<reportElement x="0" y="30" width="480" height="60" uuid="d367a730-0ee3-4190-bebd-9ea69213caba">
+				<reportElement positionType="Float" x="0" y="30" width="480" height="60" uuid="d367a730-0ee3-4190-bebd-9ea69213caba">
 					<property name="com.jaspersoft.studio.layout" value="com.jaspersoft.studio.editor.layout.VerticalRowLayout"/>
 					<property name="com.jaspersoft.studio.table.style.table_header" value="Table_TH"/>
 					<property name="com.jaspersoft.studio.table.style.column_header" value="Table_CH"/>
@@ -324,7 +328,7 @@ ORDER BY
 								<textFieldExpression><![CDATA["Order: " + $F{orderCode}]]></textFieldExpression>
 							</textField>
 							<textField>
-								<reportElement x="0" y="30" width="480" height="15" uuid="ce8e20c0-6591-44a4-80ac-ecbcffef673e"/>
+								<reportElement positionType="Float" x="0" y="30" width="480" height="15" uuid="ce8e20c0-6591-44a4-80ac-ecbcffef673e"/>
 								<textFieldExpression><![CDATA["Facility: " + $F{requestingFacilityName}]]></textFieldExpression>
 							</textField>
 							<textField>
@@ -340,7 +344,7 @@ ORDER BY
 	<columnHeader>
 		<band height="30">
 			<property name="com.jaspersoft.studio.unit.height" value="px"/>
-			<staticText>
+			<textField isStretchWithOverflow="true">
 				<reportElement mode="Opaque" x="677" y="0" width="125" height="30" forecolor="#FFFFFF" backcolor="#3D3D3D" uuid="494ee087-80f1-48ab-94c5-b20eb68dacc3">
 					<property name="com.jaspersoft.studio.unit.width" value="px"/>
 				</reportElement>
@@ -354,9 +358,10 @@ ORDER BY
 				<textElement textAlignment="Center" verticalAlignment="Middle">
 					<font size="10" isBold="true"/>
 				</textElement>
-				<text><![CDATA[Fill Quantity (vials)]]></text>
-			</staticText>
-			<staticText>
+			
+				<textFieldExpression><![CDATA[$R{report.column.fillQuantityVials}]]></textFieldExpression>
+			</textField>
+			<textField isStretchWithOverflow="true">
 				<reportElement mode="Opaque" x="380" y="0" width="80" height="30" forecolor="#FFFFFF" backcolor="#3D3D3D" uuid="1d0f90c8-155c-4c5a-a3b3-1757664bad2b">
 					<property name="com.jaspersoft.studio.unit.width" value="px"/>
 				</reportElement>
@@ -370,9 +375,10 @@ ORDER BY
 				<textElement textAlignment="Center" verticalAlignment="Middle">
 					<font size="10" isBold="true"/>
 				</textElement>
-				<text><![CDATA[VVM Status]]></text>
-			</staticText>
-			<staticText>
+			
+				<textFieldExpression><![CDATA[$R{report.column.vvmStatus}]]></textFieldExpression>
+			</textField>
+			<textField isStretchWithOverflow="true">
 				<reportElement mode="Opaque" x="460" y="0" width="90" height="30" forecolor="#FFFFFF" backcolor="#3D3D3D" uuid="874da496-6ece-4412-869f-131d08ed08a5">
 					<property name="com.jaspersoft.studio.unit.width" value="px"/>
 				</reportElement>
@@ -386,9 +392,10 @@ ORDER BY
 				<textElement textAlignment="Center" verticalAlignment="Middle">
 					<font size="10" isBold="true"/>
 				</textElement>
-				<text><![CDATA[Expiry Date]]></text>
-			</staticText>
-			<staticText>
+			
+				<textFieldExpression><![CDATA[$R{report.column.expiryDate}]]></textFieldExpression>
+			</textField>
+			<textField isStretchWithOverflow="true">
 				<reportElement mode="Opaque" x="0" y="0" width="130" height="30" forecolor="#FFFFFF" backcolor="#3D3D3D" uuid="24a43dc9-a045-479a-8e5b-7cd5b615b534">
 					<property name="com.jaspersoft.studio.unit.width" value="px"/>
 				</reportElement>
@@ -402,9 +409,10 @@ ORDER BY
 				<textElement textAlignment="Center" verticalAlignment="Middle">
 					<font size="10" isBold="true"/>
 				</textElement>
-				<text><![CDATA[Product Code]]></text>
-			</staticText>
-			<staticText>
+			
+				<textFieldExpression><![CDATA[$R{report.column.productCode}]]></textFieldExpression>
+			</textField>
+			<textField isStretchWithOverflow="true">
 				<reportElement mode="Opaque" x="130" y="0" width="150" height="30" forecolor="#FFFFFF" backcolor="#3D3D3D" uuid="75c35809-06f2-4d1c-8e67-eaff6ef07168">
 					<property name="com.jaspersoft.studio.unit.width" value="px"/>
 				</reportElement>
@@ -418,9 +426,10 @@ ORDER BY
 				<textElement textAlignment="Center" verticalAlignment="Middle">
 					<font size="10" isBold="true"/>
 				</textElement>
-				<text><![CDATA[Product]]></text>
-			</staticText>
-			<staticText>
+			
+				<textFieldExpression><![CDATA[$R{report.column.product}]]></textFieldExpression>
+			</textField>
+			<textField isStretchWithOverflow="true">
 				<reportElement mode="Opaque" x="280" y="0" width="100" height="30" forecolor="#FFFFFF" backcolor="#3D3D3D" uuid="13cf66f1-9701-4387-9dbe-c96979344f27">
 					<property name="com.jaspersoft.studio.unit.width" value="px"/>
 				</reportElement>
@@ -434,9 +443,10 @@ ORDER BY
 				<textElement textAlignment="Center" verticalAlignment="Middle">
 					<font size="10" isBold="true"/>
 				</textElement>
-				<text><![CDATA[Lot Code]]></text>
-			</staticText>
-			<staticText>
+			
+				<textFieldExpression><![CDATA[$R{report.column.lotCode}]]></textFieldExpression>
+			</textField>
+			<textField isStretchWithOverflow="true">
 				<reportElement mode="Opaque" x="550" y="0" width="127" height="30" forecolor="#FFFFFF" backcolor="#3D3D3D" uuid="a36a87dd-dbda-4f2e-a6e4-c5dc45b8aabd">
 					<property name="com.jaspersoft.studio.unit.width" value="px"/>
 				</reportElement>
@@ -450,8 +460,9 @@ ORDER BY
 				<textElement textAlignment="Center" verticalAlignment="Middle">
 					<font size="10" isBold="true"/>
 				</textElement>
-				<text><![CDATA[Fill Quantity (doses)]]></text>
-			</staticText>
+			
+				<textFieldExpression><![CDATA[$R{report.column.fillQuantityDoses}]]></textFieldExpression>
+			</textField>
 		</band>
 	</columnHeader>
 	<detail>
@@ -506,19 +517,20 @@ ORDER BY
 	</detail>
 	<pageFooter>
 		<band height="30" splitType="Stretch">
-			<staticText>
+			<textField isStretchWithOverflow="true">
 				<reportElement positionType="FixRelativeToBottom" x="0" y="0" width="360" height="30" uuid="bbf79fc6-3369-11e8-b467-0ed5f89f718b"/>
-				<text><![CDATA[Only products that have positive fill quantity entered are displayed.]]></text>
-			</staticText>
-			<textField>
+			
+				<textFieldExpression><![CDATA[$R{report.footer.onlyPositiveQuantityDisplayed}]]></textFieldExpression>
+			</textField>
+			<textField isStretchWithOverflow="true">
 				<reportElement x="660" y="10" width="70" height="20" uuid="49d7030b-3cad-47e5-af05-f063c98fb9e4"/>
 				<textElement textAlignment="Right" verticalAlignment="Bottom"/>
-				<textFieldExpression><![CDATA["Page " + $V{PAGE_NUMBER}]]></textFieldExpression>
+				<textFieldExpression><![CDATA[msg($R{report.controls.pageNumber}, $V{PAGE_NUMBER})]]></textFieldExpression>
 			</textField>
-			<textField evaluationTime="Report">
+			<textField isStretchWithOverflow="true" evaluationTime="Report">
 				<reportElement x="732" y="10" width="50" height="20" uuid="08848fb7-8d78-4e93-a448-483ebae4c582"/>
-				<textElement textAlignment="Left" verticalAlignment="Bottom"/>
-				<textFieldExpression><![CDATA[" of " + $V{PAGE_NUMBER}]]></textFieldExpression>
+				<textElement textAlignment="Left" verticalAlignment="Bottom"><paragraph leftIndent="3"/></textElement>
+				<textFieldExpression><![CDATA[msg($R{report.controls.pageTotal}, $V{PAGE_NUMBER})]]></textFieldExpression>
 			</textField>
 		</band>
 	</pageFooter>
