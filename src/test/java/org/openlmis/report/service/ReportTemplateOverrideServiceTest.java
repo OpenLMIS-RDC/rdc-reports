@@ -38,6 +38,8 @@ import net.sf.jasperreports.engine.JRParameter;
 import net.sf.jasperreports.engine.JasperReport;
 import net.sf.jasperreports.engine.util.JRLoader;
 import org.junit.Test;
+import org.openlmis.report.utils.JasperReportDeserializer;
+import org.springframework.test.util.ReflectionTestUtils;
 
 public class ReportTemplateOverrideServiceTest {
   private static final String PROOF_OF_DELIVERY = "proofOfDelivery";
@@ -89,7 +91,9 @@ public class ReportTemplateOverrideServiceTest {
     params.put("timeZoneId", "UTC");
     params.put("decimalFormat", new DecimalFormat());
 
-    byte[] pdf = new JasperReportsViewService()
+    JasperReportsViewService viewService = new JasperReportsViewService();
+    ReflectionTestUtils.setField(viewService, "reportDeserializer", new JasperReportDeserializer());
+    byte[] pdf = viewService
         .getJasperReportsView(service.findOverride(reportNamed(PROOF_OF_DELIVERY)), params);
 
     assertEquals("%PDF", new String(pdf, 0, 4, StandardCharsets.US_ASCII));

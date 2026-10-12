@@ -9,7 +9,6 @@ buildscript {
 
 plugins {
     id "org.flywaydb.flyway" version "6.0.8"
-    id "org.sonarqube" version "3.3"
     id "com.moowork.node" version "1.2.0"
 }
 
@@ -86,7 +85,7 @@ check {
 assemble {
     dependsOn ramlToHtml
     dependsOn copyRamlHtmlToBuild
-    dependsOn copyConsulRegistrationToBuild
+    dependsOn prepareConsulBuild
     dependsOn jacocoTestReport
 }
 
@@ -94,6 +93,6 @@ build {
     dependsOn check
     dependsOn ramlToHtml
     dependsOn copyRamlHtmlToBuild
-    dependsOn copyConsulRegistrationToBuild
+    dependsOn prepareConsulBuild
     dependsOn jacocoTestReport
 }

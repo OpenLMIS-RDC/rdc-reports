@@ -32,6 +32,7 @@ import org.openlmis.report.exception.JasperReportViewException;
 import org.openlmis.report.exception.ReportingException;
 import org.openlmis.report.service.JasperReportsViewService;
 import org.openlmis.report.service.JasperTemplateService;
+import org.openlmis.report.service.PermissionService;
 import org.openlmis.report.service.ReportTemplateOverrideService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -56,6 +57,7 @@ public class GenerateReportController extends BaseController {
 
   private final JasperTemplateService jasperTemplateService;
   private final JasperReportsViewService jasperReportsViewService;
+  private final PermissionService permissionService;
   private final ReportTemplateOverrideService reportTemplateOverrideService;
 
   @Value("${dateTimeFormat}")
@@ -84,6 +86,10 @@ public class GenerateReportController extends BaseController {
   @PostMapping
   public ResponseEntity<byte[]> generateReport(@RequestBody GenerateReportDto request)
       throws ReportingException, JasperReportViewException {
+    // the payload is a pre-compiled, serialized JasperReport (executable bytecode + SQL),
+    // so only other services may call this endpoint
+    permissionService.canGenerateReports();
+
     byte[] template = request.getTemplate();
     JasperReport templateReport = jasperTemplateService.loadReport(template);
 
@@ -144,9 +150,9 @@ public class GenerateReportController extends BaseController {
       params.putAll(jasperTemplateService.getLocaleBundleParameters(lang));
       params.putAll(jasperTemplateService.getMapSubreportGlobalHeaderParameters(templateReport));
     } catch (MalformedURLException e) {
-      LOGGER.debug("Cannot load translation bundle for {}", templateName);
+      LOGGER.warn("Cannot load translation bundle for {}", templateName, e);
     } catch (JRException | IOException ex) {
-      LOGGER.debug("Cannot load GlobalHeaderTemplate for {}", templateName);
+      LOGGER.warn("Cannot load GlobalHeaderTemplate for {}", templateName, ex);
     }
   }
 

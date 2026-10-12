@@ -22,6 +22,7 @@ import static org.junit.Assert.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -42,14 +43,18 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.MockitoAnnotations;
 import org.openlmis.report.dto.external.GenerateReportDto;
+import org.openlmis.report.exception.PermissionMessageException;
 import org.openlmis.report.exception.ReportingException;
 import org.openlmis.report.service.JasperReportsViewService;
 import org.openlmis.report.service.JasperTemplateService;
+import org.openlmis.report.service.PermissionService;
 import org.openlmis.report.service.ReportTemplateOverrideService;
+import org.openlmis.report.utils.Message;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.test.util.ReflectionTestUtils;
 
+@SuppressWarnings("PMD.TooManyMethods")
 public class GenerateReportControllerTest {
   private static final String TEMPLATE_NAME = "Test Report";
   private static final byte[] TEMPLATE_DATA = "jasper-template-data".getBytes();
@@ -61,6 +66,9 @@ public class GenerateReportControllerTest {
 
   @Mock
   private JasperReportsViewService jasperReportsViewService;
+
+  @Mock
+  private PermissionService permissionService;
 
   @Mock
   private ReportTemplateOverrideService reportTemplateOverrideService;
@@ -218,6 +226,27 @@ public class GenerateReportControllerTest {
 
     assertEquals(200, response.getStatusCodeValue());
     assertArrayEquals(EXPECTED_REPORT, response.getBody());
+  }
+
+  @Test
+  public void shouldRequireServiceLevelTokenBeforeGenerating() throws Exception {
+    GenerateReportDto request = new GenerateReportDto(TEMPLATE_NAME, TEMPLATE_DATA,
+        new HashMap<>());
+
+    controller.generateReport(request);
+
+    verify(permissionService).canGenerateReports();
+  }
+
+  @Test(expected = PermissionMessageException.class)
+  public void shouldRejectCallerWithoutServiceLevelToken() throws Exception {
+    doThrow(new PermissionMessageException(new Message("some.key")))
+        .when(permissionService).canGenerateReports();
+
+    GenerateReportDto request = new GenerateReportDto(TEMPLATE_NAME, TEMPLATE_DATA,
+        new HashMap<>());
+
+    controller.generateReport(request);
   }
 
   @Test(expected = ReportingException.class)
