@@ -33,6 +33,7 @@ import org.openlmis.report.exception.ReportingException;
 import org.openlmis.report.service.JasperReportsViewService;
 import org.openlmis.report.service.JasperTemplateService;
 import org.openlmis.report.service.PermissionService;
+import org.openlmis.report.service.ReportTemplateOverrideService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
@@ -57,6 +58,7 @@ public class GenerateReportController extends BaseController {
   private final JasperTemplateService jasperTemplateService;
   private final JasperReportsViewService jasperReportsViewService;
   private final PermissionService permissionService;
+  private final ReportTemplateOverrideService reportTemplateOverrideService;
 
   @Value("${dateTimeFormat}")
   private String dateTimeFormat;
@@ -88,18 +90,24 @@ public class GenerateReportController extends BaseController {
     // so only other services may call this endpoint
     permissionService.canGenerateReports();
 
+    byte[] template = request.getTemplate();
+    JasperReport templateReport = jasperTemplateService.loadReport(template);
+
+    byte[] override = reportTemplateOverrideService.findOverride(templateReport);
+    if (override != null) {
+      template = override;
+      templateReport = jasperTemplateService.loadReport(template);
+    }
+
     String templateName = request.getName();
     Map<String, Object> params = new HashMap<>(request.getParams());
-
-    JasperReport templateReport = jasperTemplateService.loadReport(request.getTemplate());
 
     processDataSource(params);
     processSubreports(params);
     addTranslationsAndHeaders(templateReport, params, templateName);
     addFormattingParameters(params);
 
-    byte[] reportData = jasperReportsViewService.getJasperReportsView(request.getTemplate(),
-        params);
+    byte[] reportData = jasperReportsViewService.getJasperReportsView(template, params);
 
     String format = (params.containsKey(PARAM_FORMAT) && params.get(PARAM_FORMAT) != null)
         ? String.valueOf(params.get(PARAM_FORMAT)) : "pdf";
