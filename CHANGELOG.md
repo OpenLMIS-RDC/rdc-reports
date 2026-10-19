@@ -8,9 +8,11 @@ Improvements:
 * [ODRC-149](https://openlmis.atlassian.net/browse/ODRC-149) Change reports' date format to DD-MM-YYYY
 * [ODRC-130](https://openlmis.atlassian.net/browse/ODRC-130) Native report translations aligned with core openlmis-report: shared ReportTranslationBundleProvider with deployment overrides, labels and page footers moved to the report.pattern/report.controls conventions, and the translation bundle synced with the Transifex source; corrected the French requisition report wording after QA (report title "Réquisition pour", full supply section "Produits à approvisionner", pack size column "Quantité par conditionnement")
 
-
 New functionality:
 * [MW-1449](https://openlmis.atlassian.net/browse/MW-1449): Ported the Superset guest token endpoint for embedded dashboards from core openlmis-report (SupersetService, guest-token endpoint gated by REPORTS_VIEW, embeddedUuid on dashboard reports).
+
+Bug fixes:
+* [OLMIS-8405](https://openlmis.atlassian.net/browse/OLMIS-8405): A service whose health check fails stays registered in Consul. Consul no longer removes it after 10 minutes in the critical state.
 
 1.2.0 / 2026-06-09
 ==================
