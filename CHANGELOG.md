@@ -13,6 +13,7 @@ New functionality:
 * [ODRC-158](https://openlmis.atlassian.net/browse/ODRC-158) RDC Proof of Delivery printout with the shipped quantity in packs and in doses, wider quantity columns and header cells that grow together; the service fills it when fulfillment sends its Proof of Delivery template to /api/reports/generate
 
 Bug fixes:
+* [ODRC-169](https://openlmis.atlassian.net/browse/ODRC-169): Fixed report translations typed in the Transifex editor printing garbled. Transifex exports them as raw UTF-8, which Java 8 read as ISO-8859-1 (such as "LibÃ©rÃ©e" for "Libérée"). The shipped bundles and the deployment override directory are read as UTF-8, and a file that is not valid UTF-8 as ISO-8859-1.
 * [OLMIS-8405](https://openlmis.atlassian.net/browse/OLMIS-8405): A service whose health check fails stays registered in Consul. Consul no longer removes it after 10 minutes in the critical state.
 
 1.2.0 / 2026-06-09
