@@ -40,10 +40,11 @@ import org.springframework.stereotype.Component;
  * {@value #DEPLOYMENT_BUNDLE_DIR}. A deployment override wins only for keys whose value actually
  * differs from the shipped English source - this lets a deployment change specific labels (in any
  * locale) while a leftover full English copy in the override directory cannot mask the classpath
- * translations for non-English locales. Bundles are resolved without the JVM default-locale
- * fallback, so a locale with no translation file deterministically falls back to the English base
- * bundle regardless of the locale the container happens to run under. The merged bundle is cached
- * per locale and only rebuilt on redeploy/restart.
+ * translations for non-English locales. Bundles are read as UTF-8 (as ISO-8859-1 when a file is
+ * not valid UTF-8) and resolved without the JVM default-locale fallback, so a locale with no
+ * translation file deterministically falls back to the English base bundle regardless of the
+ * locale the container happens to run under. The merged bundle is cached per locale and only
+ * rebuilt on redeploy/restart.
  */
 @Component
 public class ReportTranslationBundleProvider {
@@ -55,10 +56,10 @@ public class ReportTranslationBundleProvider {
   private static final String RESOURCE_BUNDLE_CLASSPATH = "resourceBundles/report_translations";
   private static final String DEPLOYMENT_BUNDLE_DIR = "/config/reports/resourceBundles";
 
-  // no JVM default-locale fallback: an unsupported locale falls straight to the base
-  // (English) properties file instead of whatever locale the JVM happens to default to
-  private static final ResourceBundle.Control BUNDLE_CONTROL =
-      ResourceBundle.Control.getNoFallbackControl(ResourceBundle.Control.FORMAT_PROPERTIES);
+  // UTF-8 (ISO-8859-1 for a file that is not valid UTF-8) and no JVM default-locale fallback: an
+  // unsupported locale falls straight to the base (English) properties file instead of whatever
+  // locale the JVM happens to default to
+  private static final ResourceBundle.Control BUNDLE_CONTROL = new Utf8PropertiesControl();
 
   private final Map<Locale, ResourceBundle> cache = new ConcurrentHashMap<>();
 
