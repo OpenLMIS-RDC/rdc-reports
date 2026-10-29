@@ -59,14 +59,14 @@
 		<property name="displayName" value="Facility"/>
 		<property name="selectExpression" value="/api/facilities?recurse=true"/>
 		<property name="selectProperty" value="name"/>
-		<property name="required" value="true"/>
+		<property name="required" value="false"/>
 		<property name="dependencies" value="geographicZone:id:zoneId,facilityType:code:type"/>
 	</parameter>
 	<parameter name="program" class="java.lang.String" nestedType="java.lang.String">
 		<property name="displayName" value="Program"/>
 		<property name="selectExpression" value="/api/programs"/>
 		<property name="selectProperty" value="name"/>
-		<property name="required" value="true"/>
+		<property name="required" value="false"/>
 	</parameter>
 	<parameter name="product" class="java.lang.String" nestedType="java.lang.String">
 		<property name="displayName" value="Product"/>
