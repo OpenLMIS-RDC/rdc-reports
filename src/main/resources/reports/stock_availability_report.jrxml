@@ -283,9 +283,12 @@ LEFT JOIN stockout_combined AS sa
     ON products.id = sa.productid AND pa.facilityid = sa.facilityid
 LEFT JOIN referencedata.facilities AS facilities ON facilities.id = pa.facilityid
 LEFT JOIN (
-    SELECT DISTINCT ON (orderableid)
-        orderableid, orderableversionnumber, orderabledisplaycategoryid
-    FROM referencedata.program_orderables
+    SELECT DISTINCT ON (po.orderableid, po.orderableversionnumber)
+        po.orderableid, po.orderableversionnumber, po.orderabledisplaycategoryid
+    FROM referencedata.program_orderables AS po
+    JOIN referencedata.programs AS po_programs ON po_programs.id = po.programid
+    ORDER BY po.orderableid, po.orderableversionnumber,
+        (po_programs.name = $P{program}::varchar) DESC NULLS LAST, po.active DESC
 ) AS program_orderables ON
     program_orderables.orderableid = products.id
     AND program_orderables.orderableversionnumber = products.versionnumber
