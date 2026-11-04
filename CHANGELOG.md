@@ -13,6 +13,7 @@ New functionality:
 * [ODRC-158](https://openlmis.atlassian.net/browse/ODRC-158) RDC Proof of Delivery printout with the shipped quantity in packs and in doses, wider quantity columns and header cells that grow together; the service fills it when fulfillment sends its Proof of Delivery template to /api/reports/generate
 
 Bug fixes:
+* [ODRC-173](https://openlmis.atlassian.net/browse/ODRC-173): Reports (Rapport de sorties, Rapport de receptions, Rapport suivi stocks, Stock disponible utilisable) show the product category on every row (product version join fix).
 * [OLMIS-8405](https://openlmis.atlassian.net/browse/OLMIS-8405): A service whose health check fails stays registered in Consul. Consul no longer removes it after 10 minutes in the critical state.
 
 1.2.0 / 2026-06-09

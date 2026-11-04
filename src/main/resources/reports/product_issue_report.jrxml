@@ -174,13 +174,14 @@ LEFT JOIN stockmanagement.nodes AS destination_nodes ON
     stock_card_line_items.destinationid = destination_nodes.id
 LEFT JOIN referencedata.facilities AS destination_facilities ON
     destination_nodes.referenceid = destination_facilities.id
-LEFT JOIN (
-	SELECT DISTINCT ON (orderableid)
-		orderableid, orderableversionnumber, orderabledisplaycategoryid, priceperpack
-	FROM referencedata.program_orderables
-) AS program_orderables ON
-    program_orderables.orderableid = products.id
-    AND program_orderables.orderableversionnumber = products.versionnumber
+LEFT JOIN LATERAL (
+    SELECT po.orderabledisplaycategoryid, po.priceperpack
+    FROM referencedata.program_orderables AS po
+    WHERE po.orderableid = products.id
+        AND po.orderableversionnumber = products.versionnumber
+    ORDER BY (po.programid = stock_cards.programid) DESC, po.active DESC
+    LIMIT 1
+) AS program_orderables ON TRUE
 LEFT JOIN referencedata.orderable_display_categories AS product_categories ON
     product_categories.id = program_orderables.orderabledisplaycategoryid
 WHERE
