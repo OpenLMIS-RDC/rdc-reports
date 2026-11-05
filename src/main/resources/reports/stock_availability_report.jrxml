@@ -288,7 +288,7 @@ LEFT JOIN (
     FROM referencedata.program_orderables AS po
     JOIN referencedata.programs AS po_programs ON po_programs.id = po.programid
     ORDER BY po.orderableid, po.orderableversionnumber,
-        (po_programs.name = $P{program}::varchar) DESC NULLS LAST, po.active DESC
+        (po_programs.name = $P{program}::varchar) DESC NULLS LAST, po.active DESC, po.programid
 ) AS program_orderables ON
     program_orderables.orderableid = products.id
     AND program_orderables.orderableversionnumber = products.versionnumber
