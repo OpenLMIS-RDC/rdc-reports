@@ -42,6 +42,7 @@ import java.util.ResourceBundle;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.junit.runners.BlockJUnit4ClassRunner;
+import org.mockito.ArgumentCaptor;
 import org.powermock.core.classloader.annotations.PrepareForTest;
 import org.powermock.modules.junit4.PowerMockRunner;
 import org.powermock.modules.junit4.PowerMockRunnerDelegate;
@@ -277,20 +278,38 @@ public class ReportTranslationBundleProviderTest {
   }
 
   @Test
-  public void getBundleShouldResolveBundlesWithoutJvmDefaultLocaleFallback() throws Exception {
+  public void getBundleShouldResolveBundlesAsUtf8WithoutJvmDefaultLocaleFallback()
+      throws Exception {
     File mockDir = mock(File.class);
     whenNew(File.class).withArguments(DEPLOYMENT_DIR).thenReturn(mockDir);
-    when(mockDir.exists()).thenReturn(false);
+    when(mockDir.exists()).thenReturn(true);
+    when(mockDir.isDirectory()).thenReturn(true);
+    when(mockDir.toURI()).thenReturn(new java.net.URI(DUMMY_FILE_URI));
 
     mockStatic(ResourceBundle.class);
+    when(ResourceBundle.getBundle(eq(RESOURCE_BUNDLE_NAME), any(Locale.class),
+        any(URLClassLoader.class), any(ResourceBundle.Control.class)))
+        .thenReturn(bundleOf(new HashMap<>()));
     when(ResourceBundle.getBundle(eq(RESOURCE_BUNDLE_CLASSPATH), any(Locale.class),
         any(ResourceBundle.Control.class))).thenReturn(bundleOf(new HashMap<>()));
 
     provider.getBundle(Locale.GERMAN);
 
+    ArgumentCaptor<ResourceBundle.Control> classpathControl =
+        ArgumentCaptor.forClass(ResourceBundle.Control.class);
     verifyStatic(ResourceBundle.class);
     ResourceBundle.getBundle(eq(RESOURCE_BUNDLE_CLASSPATH), eq(Locale.GERMAN),
-        eq(ResourceBundle.Control.getNoFallbackControl(ResourceBundle.Control.FORMAT_PROPERTIES)));
+        classpathControl.capture());
+    ArgumentCaptor<ResourceBundle.Control> deploymentControl =
+        ArgumentCaptor.forClass(ResourceBundle.Control.class);
+    verifyStatic(ResourceBundle.class);
+    ResourceBundle.getBundle(eq(RESOURCE_BUNDLE_NAME), eq(Locale.GERMAN),
+        any(URLClassLoader.class), deploymentControl.capture());
+
+    assertTrue(classpathControl.getValue() instanceof Utf8PropertiesControl);
+    assertTrue(deploymentControl.getValue() instanceof Utf8PropertiesControl);
+    assertNull(classpathControl.getValue()
+        .getFallbackLocale(RESOURCE_BUNDLE_CLASSPATH, Locale.GERMAN));
   }
 
   @Test
