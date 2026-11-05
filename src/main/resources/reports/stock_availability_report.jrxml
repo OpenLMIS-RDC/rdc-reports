@@ -64,38 +64,41 @@ user_rights AS (
     FROM referencedata.right_assignments ra
     WHERE ra.rightname = 'STOCK_CARDS_VIEW' AND ra.userId = $P{userId}::uuid
 ),
+allowed_stock_cards AS (
+    -- Stock cards the user can view, restricted by the facility and program filters.
+    -- Every stock-based column (SOH, stockout days, AMC) is computed from these cards only.
+    SELECT sc.id, sc.orderableid, sc.facilityid, sc.programid
+    FROM stockmanagement.stock_cards AS sc
+    JOIN user_rights AS ur ON ur.facilityid = sc.facilityid
+        AND ur.programid = sc.programid
+    JOIN referencedata.facilities AS facilities ON facilities.id = sc.facilityid
+    JOIN referencedata.programs AS programs ON programs.id = sc.programid
+    WHERE
+        (facilities.name = $P{facility}::varchar OR $P{facility}::varchar IS NULL)
+        AND (programs.name = $P{program}::varchar OR $P{program}::varchar IS NULL)
+),
 products_allowed AS (
     SELECT
         DISTINCT(products.id) AS productid,
         MAX(products.versionnumber) AS productversionnumber,
-        facilities.id AS facilityid
+        sc.facilityid AS facilityid
     FROM referencedata.orderables AS products
-    JOIN stockmanagement.stock_cards AS sc ON products.id = sc.orderableid
+    JOIN allowed_stock_cards AS sc ON products.id = sc.orderableid
     JOIN stockmanagement.stock_card_line_items AS scli ON sc.id = scli.stockcardid
-    JOIN referencedata.facilities AS facilities ON facilities.id = sc.facilityid
-    JOIN referencedata.facility_types AS facilities_types ON facilities_types.id = facilities.typeid
-    JOIN referencedata.geographic_zones AS zones ON zones.id = facilities.geographiczoneid
-    JOIN referencedata.programs AS programs ON sc.programid = programs.id
-    JOIN user_rights AS ur ON programs.id = ur.programid
-        AND facilities.id = ur.facilityid
     JOIN latest_orderable_identifiers AS orderable_identifiers ON
         products.id = orderable_identifiers.orderableid
         AND products.versionnumber = orderable_identifiers.orderableversionnumber
     WHERE
-        (facilities.name = $P{facility}::varchar OR $P{facility}::varchar IS NULL)
-        AND (programs.name = $P{program}::varchar OR $P{program}::varchar IS NULL)
-        AND (
-            ($P{endDate}::date IS NOT NULL AND scli.occurreddate <= $P{endDate}::date)
-            OR $P{endDate}::date IS NULL
-        )
-    GROUP BY products.id, facilities.id
+        ($P{endDate}::date IS NOT NULL AND scli.occurreddate <= $P{endDate}::date)
+        OR $P{endDate}::date IS NULL
+    GROUP BY products.id, sc.facilityid
 ),
 soh_data AS (
     SELECT
         products.id AS productid,
-        f.id AS facilityid,
+        stock_cards.facilityid AS facilityid,
         SUM(soh.stockonhand) AS stockonhand
-    FROM stockmanagement.stock_cards AS stock_cards
+    FROM allowed_stock_cards AS stock_cards
     JOIN stockmanagement.calculated_stocks_on_hand AS soh ON soh.stockcardid = stock_cards.id
     JOIN (
         SELECT
@@ -109,11 +112,10 @@ soh_data AS (
             stockcardid
     ) AS cs ON cs.stockcardid = soh.stockcardid AND cs.max_date = soh.occurreddate
     JOIN referencedata.orderables products ON products.id = stock_cards.orderableid
-    JOIN referencedata.facilities f ON stock_cards.facilityid = f.id
     JOIN products_allowed pa ON products.id = pa.productid
         AND products.versionnumber = pa.productversionnumber
         AND stock_cards.facilityid = pa.facilityid
-    GROUP BY products.id, f.id
+    GROUP BY products.id, stock_cards.facilityid
 ),
 stock_data AS (
     SELECT
@@ -122,7 +124,7 @@ stock_data AS (
         csoh.occurreddate AS occurreddate,
         MIN(csoh.stockonhand)::integer AS stockonhand
     FROM stockmanagement.calculated_stocks_on_hand csoh
-    INNER JOIN stockmanagement.stock_cards sc ON csoh.stockcardid = sc.id
+    INNER JOIN allowed_stock_cards sc ON csoh.stockcardid = sc.id
     JOIN products_allowed pa ON sc.orderableid = pa.productid
         AND sc.facilityid = pa.facilityid
     WHERE csoh.occurreddate <= $P{endDate}::date
@@ -230,33 +232,64 @@ stockout_combined AS (
     ) combined
     GROUP BY productid, facilityid
 ),
-amc_data AS (
-    WITH monthly_consumption AS (
-        SELECT
-            date_trunc('month', scli.occurreddate)::date AS month_date,
-            sc.orderableid AS productid,
-            sc.facilityid,
-            SUM(ABS(scli.quantity)) FILTER (
-                WHERE scli.destinationid IS NOT NULL OR sclir.reasontype = 'DEBIT'
-            ) AS consumption,
-            COUNT(DISTINCT scli.occurreddate::date) AS active_days
-        FROM stockmanagement.stock_card_line_items scli
-        JOIN stockmanagement.stock_cards sc ON scli.stockcardid = sc.id
-        JOIN products_allowed pa ON sc.orderableid = pa.productid
-            AND sc.facilityid = pa.facilityid
-        LEFT JOIN stockmanagement.stock_card_line_item_reasons sclir ON scli.reasonid = sclir.id
-        WHERE scli.occurreddate >= ($P{endDate}::date - INTERVAL '3 months')
-            AND scli.occurreddate < date_trunc('month', $P{endDate}::date)
-        GROUP BY date_trunc('month', scli.occurreddate)::date, sc.orderableid, sc.facilityid
-    )
+amc_window AS (
+    -- The last 3 finished calendar months up to endDate. The endDate's month is
+    -- included only when endDate is the last day of that month.
     SELECT
-        mc.productid,
-        mc.facilityid,
-        ROUND(AVG(mc.consumption), 2) AS amc
-    FROM monthly_consumption mc
-    WHERE mc.month_date >= ($P{endDate}::date - INTERVAL '3 months')
-        AND mc.month_date < date_trunc('month', $P{endDate}::date)
-    GROUP BY mc.productid, mc.facilityid
+        (date_trunc('month', $P{endDate}::date + 1) - INTERVAL '3 months')::date AS window_start,
+        date_trunc('month', $P{endDate}::date + 1)::date AS window_end
+),
+amc_months AS (
+    SELECT generate_series(
+        w.window_start, w.window_end - INTERVAL '1 month', INTERVAL '1 month'
+    )::date AS month_date
+    FROM amc_window w
+),
+first_movement AS (
+    SELECT
+        sc.orderableid AS productid,
+        sc.facilityid,
+        date_trunc('month', MIN(scli.occurreddate))::date AS first_month
+    FROM stockmanagement.stock_card_line_items scli
+    JOIN allowed_stock_cards sc ON scli.stockcardid = sc.id
+    GROUP BY sc.orderableid, sc.facilityid
+),
+monthly_consumption AS (
+    -- Consumption as in the core stock based requisition: the signed quantity of the line items
+    -- whose reason has the 'consumed' tag
+    SELECT
+        date_trunc('month', scli.occurreddate)::date AS month_date,
+        sc.orderableid AS productid,
+        sc.facilityid,
+        GREATEST(-SUM(
+            CASE WHEN scli.sourceid IS NOT NULL OR sclir.reasontype = 'CREDIT'
+                THEN scli.quantity
+                ELSE -scli.quantity END
+        ), 0) AS consumption
+    FROM stockmanagement.stock_card_line_items scli
+    JOIN allowed_stock_cards sc ON scli.stockcardid = sc.id
+    JOIN stockmanagement.stock_card_line_item_reasons sclir ON scli.reasonid = sclir.id
+    JOIN stockmanagement.stock_card_line_item_reason_tags tags ON tags.reasonid = sclir.id
+        AND tags.tag = 'consumed'
+    CROSS JOIN amc_window w
+    WHERE scli.occurreddate >= w.window_start
+        AND scli.occurreddate < w.window_end
+    GROUP BY date_trunc('month', scli.occurreddate)::date, sc.orderableid, sc.facilityid
+),
+amc_data AS (
+    -- Average over the months of the window in which the stock card already existed;
+    -- such months without any consumption count as 0.
+    SELECT
+        pa.productid,
+        pa.facilityid,
+        ROUND(SUM(COALESCE(mc.consumption, 0))::numeric / COUNT(*), 2) AS amc
+    FROM products_allowed pa
+    JOIN first_movement fm ON fm.productid = pa.productid AND fm.facilityid = pa.facilityid
+    JOIN amc_months m ON m.month_date >= fm.first_month
+    LEFT JOIN monthly_consumption mc ON mc.productid = pa.productid
+        AND mc.facilityid = pa.facilityid
+        AND mc.month_date = m.month_date
+    GROUP BY pa.productid, pa.facilityid
 )
 SELECT
     products.code AS productCode,
@@ -267,9 +300,11 @@ SELECT
     COALESCE(soh.stockonhand, 0) AS stockOnHand,
     COALESCE(amc.amc, 0) AS averageMonthlyConsumption,
     COALESCE(sa.totalstockoutdays, 0) AS stockoutDays,
+    -- NULL (shown as N/A) when stock is available but AMC is 0 or cannot be calculated
     CASE
         WHEN amc.amc > 0 THEN ROUND(COALESCE(soh.stockonhand, 0)::numeric / amc.amc, 2)
-        ELSE 0
+        WHEN COALESCE(soh.stockonhand, 0) <= 0 THEN 0
+        ELSE NULL
     END AS monthOfStock
 FROM referencedata.orderables AS products
 JOIN products_allowed AS pa ON products.id = pa.productid
@@ -659,7 +694,7 @@ ORDER BY facilities.name, products.code]]>
 					<font isBold="false"/>
 					<paragraph lineSpacing="1_1_2"/>
 				</textElement>
-				<textFieldExpression><![CDATA[$F{monthOfStock}]]></textFieldExpression>
+				<textFieldExpression><![CDATA[$F{monthOfStock} == null ? $R{report.value.notApplicable} : $F{monthOfStock}]]></textFieldExpression>
 			</textField>
 		</band>
 	</detail>

@@ -14,6 +14,7 @@ New functionality:
 
 Bug fixes:
 * [ODRC-173](https://openlmis.atlassian.net/browse/ODRC-173): Reports (Rapport de sorties, Rapport de receptions, Rapport suivi stocks, Stock disponible utilisable) show the product category on every row (product version join fix).
+* [ODRC-172](https://openlmis.atlassian.net/browse/ODRC-172): Fixed the Month of stock calculation in the Stock disponible utilisable report
 * [OLMIS-8405](https://openlmis.atlassian.net/browse/OLMIS-8405): A service whose health check fails stays registered in Consul. Consul no longer removes it after 10 minutes in the critical state.
 
 1.2.0 / 2026-06-09
