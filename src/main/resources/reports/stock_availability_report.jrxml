@@ -33,17 +33,47 @@
 		<property name="required" value="true"/>
 		<parameterDescription><![CDATA[datepickers]]></parameterDescription>
 	</parameter>
+	<parameter name="geographicLevel" class="java.lang.String" nestedType="java.lang.String">
+		<property name="displayName" value="Geographic Level"/>
+		<property name="selectExpression" value="/api/geographicLevels"/>
+		<property name="selectProperty" value="levelNumber"/>
+		<property name="displayProperty" value="name"/>
+		<property name="required" value="false"/>
+	</parameter>
+	<parameter name="geographicZone" class="java.lang.String" nestedType="java.lang.String">
+		<property name="displayName" value="Geographic Zone"/>
+		<property name="selectExpression" value="/api/geographicZones"/>
+		<property name="selectProperty" value="id"/>
+		<property name="displayProperty" value="name"/>
+		<property name="required" value="false"/>
+		<property name="dependencies" value="geographicLevel:levelNumber:levelNumber"/>
+	</parameter>
+	<parameter name="facilityType" class="java.lang.String" nestedType="java.lang.String">
+		<property name="displayName" value="Facility Type"/>
+		<property name="selectExpression" value="/api/facilityTypes"/>
+		<property name="selectProperty" value="code"/>
+		<property name="displayProperty" value="name"/>
+		<property name="required" value="false"/>
+	</parameter>
 	<parameter name="facility" class="java.lang.String" nestedType="java.lang.String">
 		<property name="displayName" value="Facility"/>
-		<property name="selectExpression" value="/api/facilities"/>
+		<property name="selectExpression" value="/api/facilities?recurse=true"/>
 		<property name="selectProperty" value="name"/>
 		<property name="required" value="false"/>
+		<property name="dependencies" value="geographicZone:id:zoneId,facilityType:code:type"/>
 	</parameter>
 	<parameter name="program" class="java.lang.String" nestedType="java.lang.String">
 		<property name="displayName" value="Program"/>
 		<property name="selectExpression" value="/api/programs"/>
 		<property name="selectProperty" value="name"/>
 		<property name="required" value="false"/>
+	</parameter>
+	<parameter name="product" class="java.lang.String" nestedType="java.lang.String">
+		<property name="displayName" value="Product"/>
+		<property name="selectExpression" value="/api/orderables"/>
+		<property name="selectProperty" value="fullProductName"/>
+		<property name="required" value="false"/>
+		<property name="dependencies" value="program:code:program"/>
 	</parameter>
 	<parameter name="userId" class="java.lang.String" isForPrompting="false">
 		<property name="displayName" value="ID of the currently authenticated user - should not be in template parameters"/>
@@ -52,6 +82,20 @@
 	<parameter name="headerTemplate" class="net.sf.jasperreports.engine.JasperReport" isForPrompting="false"/>
 	<queryString>
 		<![CDATA[WITH
+RECURSIVE findChildZones AS (
+    SELECT * FROM referencedata.geographic_zones WHERE name = $P{geographicZone}::varchar
+    UNION ALL
+    SELECT referencedata.geographic_zones.* FROM referencedata.geographic_zones
+    JOIN findChildZones ON findChildZones.id = referencedata.geographic_zones.parentId
+),
+findLevelZones AS (
+    SELECT gz.id FROM referencedata.geographic_zones gz
+    JOIN referencedata.geographic_levels gl ON gl.id = gz.levelid
+    WHERE gl.name = $P{geographicLevel}::varchar
+    UNION ALL
+    SELECT c.id FROM referencedata.geographic_zones c
+    JOIN findLevelZones p ON p.id = c.parentid
+),
 latest_orderable_identifiers AS (
     SELECT DISTINCT ON (orderableid)
         orderableid, value, orderableversionnumber
@@ -83,6 +127,11 @@ products_allowed AS (
         AND products.versionnumber = orderable_identifiers.orderableversionnumber
     WHERE
         (facilities.name = $P{facility}::varchar OR $P{facility}::varchar IS NULL)
+        AND (facilities_types.name = $P{facilityType}::varchar OR $P{facilityType}::varchar IS NULL)
+        AND (zones.id IN (SELECT id FROM findChildZones) OR $P{geographicZone}::varchar IS NULL)
+        AND (zones.id IN (SELECT id FROM findLevelZones)
+             OR $P{geographicLevel}::varchar IS NULL)
+        AND (products.fullproductname = $P{product}::varchar OR $P{product}::varchar IS NULL)
         AND (programs.name = $P{program}::varchar OR $P{program}::varchar IS NULL)
         AND (
             ($P{endDate}::date IS NOT NULL AND scli.occurreddate <= $P{endDate}::date)
@@ -320,97 +369,97 @@ ORDER BY facilities.name, products.code]]>
 		</band>
 	</title>
 	<pageHeader>
-		<band height="114" splitType="Stretch">
+		<band height="126" splitType="Stretch">
 			<printWhenExpression><![CDATA[new Boolean($V{PAGE_NUMBER}.intValue()==1)]]></printWhenExpression>
+			<textField isStretchWithOverflow="true">
+				<reportElement x="210" y="92" width="202" height="12" uuid="a7e77463-8388-4f97-88a0-317f2dfa96e5"/>
+				<textElement textAlignment="Left" verticalAlignment="Middle">
+					<font size="10" isBold="true"/>
+				</textElement>
+				<textFieldExpression><![CDATA[msg($R{report.pattern.label}, $R{report.header.reportDate})]]></textFieldExpression>
+			</textField>
 			<rectangle>
-				<reportElement x="0" y="10" width="800" height="35" backcolor="#C0C0C0" uuid="1d9034c0-77df-4000-920e-06594b2ebeb6">
+				<reportElement x="1" y="10" width="801" height="35" backcolor="#C0C0C0" uuid="81881962-a364-4c87-8f8e-cbee21295853">
 					<property name="com.jaspersoft.studio.unit.height" value="px"/>
 				</reportElement>
 				<graphicElement>
 					<pen lineWidth="0.0"/>
 				</graphicElement>
 			</rectangle>
-			<textField>
-				<reportElement x="0" y="10" width="800" height="34" forecolor="#FFFFFF" uuid="0e3cc6fc-7fea-4050-a800-2f5beff70890"/>
+			<textField isStretchWithOverflow="true">
+				<reportElement x="1" y="10" width="800" height="34" forecolor="#FFFFFF" uuid="dff94131-f688-4e3b-8828-ed0ec378489a"/>
 				<textElement textAlignment="Center" verticalAlignment="Middle">
 					<font size="24" isBold="true"/>
 				</textElement>
 				<textFieldExpression><![CDATA[$R{report.title.stockAvailability}]]></textFieldExpression>
 			</textField>
-			<textField>
-				<reportElement x="0" y="55" width="200" height="20" uuid="c99c8f1c-d3d3-4020-8541-2da7e1a48466">
-					<property name="com.jaspersoft.studio.unit.width" value="px"/>
-				</reportElement>
-				<textElement textAlignment="Left" verticalAlignment="Middle">
-					<font isBold="true"/>
-				</textElement>
-				<textFieldExpression><![CDATA[msg($R{report.pattern.label}, $R{report.header.facility})]]></textFieldExpression>
+			<textField isStretchWithOverflow="true">
+				<reportElement x="1" y="64" width="208" height="12" uuid="8beeeb4d-05c7-425c-ba11-3f2e115c2e8c"/>
+				<textFieldExpression><![CDATA[$P{facility} != null ? $P{facility} : ($P{facilityType} != null ? $P{facilityType} : "All")]]></textFieldExpression>
 			</textField>
-			<textField>
-				<reportElement x="200" y="55" width="200" height="20" uuid="dca5e26f-c56e-4405-b824-e7f5516e0a7e">
-					<property name="com.jaspersoft.studio.unit.width" value="px"/>
-				</reportElement>
+			<textField isStretchWithOverflow="true">
+				<reportElement x="210" y="104" width="202" height="12" uuid="f545290e-edbb-44e8-a714-d2c65c1554be"/>
+				<textFieldExpression><![CDATA[DateTimeFormatter.ofPattern("dd-MM-yyyy").format(LocalDate.now())]]></textFieldExpression>
+			</textField>
+			<textField isStretchWithOverflow="true">
+				<reportElement x="210" y="52" width="202" height="12" uuid="e13d817e-399a-4dbe-8701-94ee00565566"/>
 				<textElement textAlignment="Left" verticalAlignment="Middle">
 					<font size="10" isBold="true"/>
 				</textElement>
 				<textFieldExpression><![CDATA[msg($R{report.pattern.label}, $R{report.header.program})]]></textFieldExpression>
 			</textField>
-			<textField>
-				<reportElement x="400" y="55" width="130" height="20" uuid="48e7b132-74de-44e8-9a1f-5ab8e86adeb5">
-					<property name="com.jaspersoft.studio.unit.width" value="px"/>
-				</reportElement>
+			<textField isStretchWithOverflow="true">
+				<reportElement x="210" y="64" width="202" height="12" uuid="a356af58-e0fc-4624-b586-2ff1e70535ba"/>
+				<textFieldExpression><![CDATA[$P{program} != null ? $P{program} : "All"]]></textFieldExpression>
+			</textField>
+			<textField isStretchWithOverflow="true">
+				<reportElement x="1" y="92" width="208" height="12" uuid="99b6b936-223a-463f-9721-dd2572516a0f"/>
 				<textElement textAlignment="Left" verticalAlignment="Middle">
 					<font size="10" isBold="true"/>
 				</textElement>
-				<textFieldExpression><![CDATA[msg($R{report.pattern.label}, $R{report.header.startDate})]]></textFieldExpression>
+				<textFieldExpression><![CDATA[msg($R{report.pattern.label}, $R{report.header.product})]]></textFieldExpression>
 			</textField>
-			<textField>
-				<reportElement x="530" y="55" width="130" height="20" uuid="48e7b132-74de-44e8-9a1f-5ab8e86adeb5">
-					<property name="com.jaspersoft.studio.unit.width" value="px"/>
-				</reportElement>
+			<textField isStretchWithOverflow="true">
+				<reportElement x="1" y="104" width="208" height="12" uuid="a2969137-95c7-4ee2-b9e5-02342680c8fc"/>
+				<textFieldExpression><![CDATA[$P{product} != null ? $P{product} : "All"]]></textFieldExpression>
+			</textField>
+			<textField isStretchWithOverflow="true">
+				<reportElement x="412" y="92" width="208" height="12" uuid="3f6f31a3-0786-411a-9dc1-c089bc02e910"/>
 				<textElement textAlignment="Left" verticalAlignment="Middle">
 					<font size="10" isBold="true"/>
 				</textElement>
 				<textFieldExpression><![CDATA[msg($R{report.pattern.label}, $R{report.header.endDate})]]></textFieldExpression>
 			</textField>
-			<textField>
-				<reportElement key="" x="660" y="55" width="130" height="20" uuid="4b505859-702c-4523-b9ee-567234bef054">
-					<property name="com.jaspersoft.studio.unit.width" value="px"/>
-				</reportElement>
+			<textField isStretchWithOverflow="true">
+				<reportElement x="412" y="104" width="208" height="12" uuid="86334f26-317a-47b0-b101-c21976189645"/>
+				<textFieldExpression><![CDATA[$P{endDate} == null ? null : DateTimeFormatter.ofPattern("dd-MM-yyyy").format(LocalDate.parse($P{endDate}))]]></textFieldExpression>
+			</textField>
+			<textField isStretchWithOverflow="true">
+				<reportElement x="412" y="52" width="208" height="12" uuid="66fb9bb0-44cb-4bd4-99aa-765e066e0b9c"/>
 				<textElement textAlignment="Left" verticalAlignment="Middle">
 					<font size="10" isBold="true"/>
 				</textElement>
-				<textFieldExpression><![CDATA[msg($R{report.pattern.label}, $R{report.header.reportDate})]]></textFieldExpression>
+				<textFieldExpression><![CDATA[msg($R{report.pattern.label}, $R{report.header.startDate})]]></textFieldExpression>
 			</textField>
-			<textField>
-				<reportElement x="0" y="80" width="200" height="20" uuid="a8565621-bd19-4b76-bd5e-280c405039c6">
-					<property name="com.jaspersoft.studio.unit.width" value="px"/>
-				</reportElement>
-				<textFieldExpression><![CDATA[$P{facility} != null ? $P{facility} : "All"]]></textFieldExpression>
-			</textField>
-			<textField>
-				<reportElement x="200" y="80" width="200" height="20" uuid="c88caf12-452e-4beb-846a-faadd85f251e">
-					<property name="com.jaspersoft.studio.unit.width" value="px"/>
-				</reportElement>
-				<textFieldExpression><![CDATA[$P{program} != null ? $P{program} : "All"]]></textFieldExpression>
-			</textField>
-			<textField>
-				<reportElement x="400" y="80" width="130" height="20" uuid="36f32e3f-b43e-458c-8724-9ea5571e0369">
-					<property name="com.jaspersoft.studio.unit.width" value="px"/>
-				</reportElement>
+			<textField isStretchWithOverflow="true">
+				<reportElement x="412" y="64" width="208" height="12" uuid="0b3bd91e-37c5-4d59-a10f-a74fc2c1e37e"/>
 				<textFieldExpression><![CDATA[$P{startDate} == null ? null : DateTimeFormatter.ofPattern("dd-MM-yyyy").format(LocalDate.parse($P{startDate}))]]></textFieldExpression>
 			</textField>
-			<textField>
-				<reportElement x="530" y="80" width="130" height="20" uuid="36f32e3f-b43e-458c-8724-9ea5571e0369">
-					<property name="com.jaspersoft.studio.unit.width" value="px"/>
-				</reportElement>
-				<textFieldExpression><![CDATA[$P{endDate} == null ? null : DateTimeFormatter.ofPattern("dd-MM-yyyy").format(LocalDate.parse($P{endDate}))]]></textFieldExpression>
+			<textField isStretchWithOverflow="true">
+				<reportElement x="1" y="52" width="208" height="12" uuid="fdd9cb6e-e338-4d21-a475-8116fe2f444b"/>
+				<textElement textAlignment="Left" verticalAlignment="Middle">
+					<font size="10" isBold="true"/>
+				</textElement>
+				<textFieldExpression><![CDATA[msg($R{report.pattern.label}, $P{facility} == null && $P{facilityType} != null ? $R{report.header.facilityType} : $R{report.header.facility})]]></textFieldExpression>
 			</textField>
-			<textField pattern="MMM d, yyyy">
-				<reportElement x="660" y="80" width="130" height="20" uuid="1a79bec9-bcf9-40b7-9530-86290dcd415f">
-					<property name="com.jaspersoft.studio.unit.width" value="px"/>
-				</reportElement>
-				<textFieldExpression><![CDATA[DateTimeFormatter.ofPattern("dd-MM-yyyy").format(LocalDate.now())]]></textFieldExpression>
+			<textField isStretchWithOverflow="true" isBlankWhenNull="true">
+				<reportElement x="620" y="52" width="181" height="12" uuid="a5975f31-2c1f-4d5f-8317-e08cce9f54d5"/>
+				<textElement><font isBold="true"/></textElement>
+				<textFieldExpression><![CDATA[msg($R{report.pattern.label}, $P{geographicZone} != null ? $R{report.header.geographicZone} : $R{report.header.geographicLevel})]]></textFieldExpression>
+			</textField>
+			<textField isStretchWithOverflow="true" isBlankWhenNull="true">
+				<reportElement x="620" y="64" width="181" height="12" uuid="41eeffb7-b6cc-4bc8-a9a1-54545c5a91a1"/>
+				<textFieldExpression><![CDATA[$P{geographicZone} != null ? $P{geographicZone} : ($P{geographicLevel} != null ? $P{geographicLevel} : "All")]]></textFieldExpression>
 			</textField>
 		</band>
 	</pageHeader>
