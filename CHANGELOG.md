@@ -3,7 +3,7 @@
 
 Improvements:
 * [ODRC-167](https://openlmis.atlassian.net/browse/ODRC-167) Upgraded to core openlmis-report v1.6.0 (OpenLMIS 3.20)
-* [ODRC-154](https://openlmis.atlassian.net/browse/ODRC-154) Use the Geographic Level filter in the report SQLs and show the geographic and facility filters in the report header
+* [ODRC-154](https://openlmis.atlassian.net/browse/ODRC-154) Use the Geographic Level filter in the report SQLs and show the geographic and facility filters in the report header; Program and Facility filters are optional (All) in Rapport de sorties and Rapport de receptions
 * [ODRC-148](https://openlmis.atlassian.net/browse/ODRC-148) Unified filters for the RDC Jasper reports and created them with fixed ids
 * [ODRC-149](https://openlmis.atlassian.net/browse/ODRC-149) Change reports' date format to DD-MM-YYYY
 * [ODRC-130](https://openlmis.atlassian.net/browse/ODRC-130) Native report translations aligned with core openlmis-report: shared ReportTranslationBundleProvider with deployment overrides, labels and page footers moved to the report.pattern/report.controls conventions, and the translation bundle synced with the Transifex source; corrected the French requisition report wording after QA (report title "Réquisition pour", full supply section "Produits à approvisionner", pack size column "Quantité par conditionnement")
